@@ -23,12 +23,7 @@ bun add github:Overtorment/echalote
 npm install file:../echalote
 ```
 
-Peer crypto packages (versions are pinned — do not upgrade casually):
-
-```bash
-npm install @hazae41/base16@1.0.18 @hazae41/base64@1.0.15 \
-  @hazae41/ed25519@2.1.21 @hazae41/sha1@1.1.14 @hazae41/x25519@2.2.9
-```
+Crypto helpers (`base16` / `base64` / `ed25519` / `sha1` / `x25519`) are normal dependencies — no separate peer install. Versions are pinned; do not upgrade casually.
 
 `postinstall` runs `node scripts/fix-hazae41-x509.mjs` to patch `@hazae41/x509` export paths when needed.
 
