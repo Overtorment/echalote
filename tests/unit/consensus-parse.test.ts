@@ -2,7 +2,7 @@
  * Characterization tests for consensus / microdesc parsers — these are the
  * directory helpers helix3 relies on (clearnet fetch + parseOrThrow).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "@jest/globals";
 import { Consensus } from "../../src/mods/tor/consensus/consensus.ts";
 
 const microdescBody = `onion-key

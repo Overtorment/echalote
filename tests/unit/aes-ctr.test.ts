@@ -3,9 +3,10 @@
  * (see tests/unit/vectors/aes-ctr-wasm.json). Includes mid-block continuity
  * required for Tor RELAY payloads (509 bytes).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "@jest/globals";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   Aes128Ctr128BEKey,
   AesWasm,
@@ -13,7 +14,7 @@ import {
 } from "../../src/libs/aes/index.ts";
 
 const vectors = JSON.parse(
-  readFileSync(join(import.meta.dirname, "vectors/aes-ctr-wasm.json"), "utf8"),
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "vectors/aes-ctr-wasm.json"), "utf8"),
 ) as {
   fullBlock: {
     key: string;
@@ -117,7 +118,7 @@ describe("Aes128Ctr128BEKey (wasm vectors)", () => {
       );
       const m = new Memory(fromHex(plain));
       k.apply_keystream(m);
-      expect(toHex(m.bytes), `len=${len}`).toBe(after);
+      expect(toHex(m.bytes)).toBe(after);
     }
   });
 

@@ -2,7 +2,7 @@
  * Live integration: meek → exit circuit → HTTPS check.torproject.org/api/ip
  * Requires outbound network (CDN77 meek, directory authorities, exit traffic).
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "@jest/globals";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import { fetch as flecheFetch } from "@hazae41/fleche";
 import {

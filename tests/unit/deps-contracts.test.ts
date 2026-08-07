@@ -2,13 +2,14 @@
  * Contracts helix3 / Bun need from hazae41 transitive deps.
  * These catch the Cursor 2.x / Mutex 2.2.x upgrades that break echalote at runtime.
  */
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "@jest/globals";
 import { Mutex } from "@hazae41/mutex";
 import { Cursor } from "@hazae41/cursor";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = join(import.meta.dirname, "../..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
 function pkgVersion(name: string): string {
   const pkg = JSON.parse(

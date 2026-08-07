@@ -15,15 +15,19 @@ Primary happy path:
 ```bash
 npm install                 # prepare → npm run build; postinstall → node x509 fix
 npm run build               # rimraf dist && rollup -c
-bun run test:unit           # tests/unit (Bun test runner)
-bun run test:integration    # live Tor (network)
+bun run test:unit           # Bun runner (rewrites @jest/globals → bun:test)
+npm run test:unit:node      # Jest on Node
+bun run test:integration
+npm run test:integration:node
 ```
 
-CI: `.github/workflows/ci.yml` — four jobs:
-- `unit-bun` / `integration-bun` — `bun install --frozen-lockfile`
-- `unit-npm` / `integration-npm` — `npm ci` + `node scripts/smoke-node.mjs`, then Bun only as the test runner
+Tests import from `@jest/globals` (not `bun:test`). Bun’s runner rewrites that import; npm CI uses real Jest (`jest.config.cjs` + ts-jest).
 
-Keep `package-lock.json` in sync when changing deps (`npm install`).
+CI: `.github/workflows/ci.yml` — four jobs:
+- `unit-bun` / `integration-bun` — `bun install` + `bun test`
+- `unit-npm` / `integration-npm` — `npm ci` + smoke + Jest
+
+Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 
 **Engines:** Node `>=20`.
 

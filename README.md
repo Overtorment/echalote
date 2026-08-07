@@ -146,13 +146,15 @@ No `@hazae41/aes.wasm` / `@hazae41/rsa.wasm`.
 ## Develop
 
 ```bash
-npm install          # also runs prepare → build
-npm run build        # rollup → dist/esm, dist/cjs, dist/types
-bun run test:unit    # offline unit tests (Bun test runner)
+npm install                 # also runs prepare → build
+npm run build               # rollup → dist/esm, dist/cjs, dist/types
+bun run test:unit           # Bun test runner
+npm run test:unit:node      # Jest on Node (same tests)
 bun run test:integration
+npm run test:integration:node
 ```
 
-Layout: `tests/unit/`, `tests/integration/`. CI runs unit + integration for both **Bun** and **npm/Node** (npm jobs also smoke-import `dist` under Node).
+Tests use `@jest/globals`. Bun rewrites those imports to its runner; npm CI runs Jest. Layout: `tests/unit/`, `tests/integration/`.
 
 ## Privacy / threat model (short)
 
