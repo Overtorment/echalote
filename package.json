@@ -17,7 +17,6 @@
   "scripts": {
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
-    "fallbacks": "cd ./tools/fallbacks && deno run -A ./parser.ts && deno fmt ./fallbacks.json",
     "postinstall": "bun scripts/fix-hazae41-x509.mjs"
   },
   "peerDependencies": {
