@@ -37,7 +37,7 @@ export { RelayDropCell } from './mods/tor/binary/cells/relayed/relay_drop/cell.j
 export { RelayEarlyCell, RelayEarlyCellable } from './mods/tor/binary/cells/direct/relay_early/cell.js';
 export { RelayEndCell } from './mods/tor/binary/cells/relayed/relay_end/cell.js';
 export { RelayEndReason, RelayEndReasonExitPolicy, RelayEndReasonOther } from './mods/tor/binary/cells/relayed/relay_end/reason.js';
-export { RelayEndedError, SecretTorStreamDuplex, SecretTorStreamDuplexType, TorStreamDuplex, TorStreamEvents } from './mods/tor/stream.js';
+export { RelayEndedError, SecretTorStreamDuplex, SecretTorStreamDuplexType, TorStreamDuplex, TorStreamEvents, asOpaqueDuplex } from './mods/tor/stream.js';
 export { RelayExtend2Cell } from './mods/tor/binary/cells/relayed/relay_extend2/cell.js';
 export { RelayExtend2Link, RelayExtend2LinkIPv4, RelayExtend2LinkIPv6, RelayExtend2LinkLegacyID, RelayExtend2LinkModernID } from './mods/tor/binary/cells/relayed/relay_extend2/link.js';
 export { RelayExtended2Cell } from './mods/tor/binary/cells/relayed/relay_extended2/cell.js';

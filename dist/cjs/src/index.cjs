@@ -154,6 +154,7 @@ exports.RelayEndReasonOther = reason.RelayEndReasonOther;
 exports.RelayEndedError = stream.RelayEndedError;
 exports.SecretTorStreamDuplex = stream.SecretTorStreamDuplex;
 exports.TorStreamDuplex = stream.TorStreamDuplex;
+exports.asOpaqueDuplex = stream.asOpaqueDuplex;
 exports.RelayExtend2Cell = cell$i.RelayExtend2Cell;
 Object.defineProperty(exports, "RelayExtend2Link", {
 	enumerable: true,

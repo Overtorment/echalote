@@ -49,5 +49,5 @@ export { BuildExitCircuitOptions, buildExitCircuit } from './tor/directory/build
 export { AUTHORITY_HOSTS, CONSENSUS_MIRRORS, FetchMicrodescConsensusOptions, FetchMicrodescOptions, fetchMicrodesc, fetchMicrodescConsensus } from './tor/directory/clearnet.js';
 export { InvalidTorStateError, InvalidTorVersionError, TorClientError, Unimplemented } from './tor/errors.js';
 export { TorHandshakedState, TorHandshakingState, TorNoneState, TorState, TorVersionedState } from './tor/state.js';
-export { RelayEndedError, SecretTorStreamDuplex, SecretTorStreamDuplexType, TorStreamDuplex, TorStreamEvents } from './tor/stream.js';
+export { RelayEndedError, SecretTorStreamDuplex, SecretTorStreamDuplexType, TorStreamDuplex, TorStreamEvents, asOpaqueDuplex } from './tor/stream.js';
 export { Target } from './tor/target.js';

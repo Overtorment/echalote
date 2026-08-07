@@ -8,6 +8,7 @@ var bytes = require('@hazae41/bytes');
 var fleche = require('@hazae41/fleche');
 var index = require('../../../libs/rsa/index.cjs');
 var x509 = require('@hazae41/x509');
+var stream = require('../stream.cjs');
 
 exports.Consensus = void 0;
 (function (Consensus) {
@@ -25,8 +26,8 @@ exports.Consensus = void 0;
         ]);
     })(Authority = Consensus.Authority || (Consensus.Authority = {}));
     async function fetchOrThrow(circuit, signal = new AbortController().signal) {
-        const stream = await circuit.openDirOrThrow({}, signal);
-        const response = await fleche.fetch(`http://localhost/tor/status-vote/current/consensus-microdesc.z`, { stream: stream.outer, signal });
+        const stream$1 = await circuit.openDirOrThrow({}, signal);
+        const response = await fleche.fetch(`http://localhost/tor/status-vote/current/consensus-microdesc.z`, { stream: stream.asOpaqueDuplex(stream$1.outer), signal });
         const consensus = Consensus.parseOrThrow(await response.text());
         if (await Consensus.verifyOrThrow(circuit, consensus, signal) !== true)
             throw new Error(`Could not verify`);
@@ -345,8 +346,8 @@ exports.Consensus = void 0;
     let Certificate;
     (function (Certificate) {
         async function fetchAllOrThrow(circuit, signal = new AbortController().signal) {
-            const stream = await circuit.openDirOrThrow({}, signal);
-            const response = await fleche.fetch(`http://localhost/tor/keys/fp/all.z`, { stream: stream.outer, signal });
+            const stream$1 = await circuit.openDirOrThrow({}, signal);
+            const response = await fleche.fetch(`http://localhost/tor/keys/fp/all.z`, { stream: stream.asOpaqueDuplex(stream$1.outer), signal });
             if (!response.ok)
                 throw new Error(`Could not fetch`);
             const certificates = parseOrThrow(await response.text());
@@ -357,8 +358,8 @@ exports.Consensus = void 0;
         }
         Certificate.fetchAllOrThrow = fetchAllOrThrow;
         async function fetchOrThrow(circuit, fingerprint, signal = new AbortController().signal) {
-            const stream = await circuit.openDirOrThrow(undefined, signal);
-            const response = await fleche.fetch(`http://localhost/tor/keys/fp/${fingerprint}.z`, { stream: stream.outer, signal });
+            const stream$1 = await circuit.openDirOrThrow(undefined, signal);
+            const response = await fleche.fetch(`http://localhost/tor/keys/fp/${fingerprint}.z`, { stream: stream.asOpaqueDuplex(stream$1.outer), signal });
             if (!response.ok)
                 throw new Error(`Could not fetch`);
             const [certificate] = parseOrThrow(await response.text());
@@ -482,8 +483,8 @@ exports.Consensus = void 0;
     })(Certificate = Consensus.Certificate || (Consensus.Certificate = {}));
     (function (Microdesc) {
         async function fetchOrThrow(circuit, ref, signal = new AbortController().signal) {
-            const stream = await circuit.openDirOrThrow({}, signal);
-            const response = await fleche.fetch(`http://localhost/tor/micro/d/${ref.microdesc}.z`, { stream: stream.outer, signal });
+            const stream$1 = await circuit.openDirOrThrow({}, signal);
+            const response = await fleche.fetch(`http://localhost/tor/micro/d/${ref.microdesc}.z`, { stream: stream.asOpaqueDuplex(stream$1.outer), signal });
             if (!response.ok)
                 throw new Error(`Could not fetch ${response.status} ${response.statusText}: ${await response.text()}`);
             const buffer = await response.arrayBuffer();

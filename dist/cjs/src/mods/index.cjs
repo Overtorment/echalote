@@ -181,5 +181,6 @@ exports.Unimplemented = errors$1.Unimplemented;
 exports.RelayEndedError = stream.RelayEndedError;
 exports.SecretTorStreamDuplex = stream.SecretTorStreamDuplex;
 exports.TorStreamDuplex = stream.TorStreamDuplex;
+exports.asOpaqueDuplex = stream.asOpaqueDuplex;
 exports.Target = target.Target;
 //# sourceMappingURL=index.cjs.map
