@@ -13,10 +13,47 @@ var reason = require('./binary/cells/relayed/relay_end/reason.cjs');
 var cell$3 = require('./binary/cells/relayed/relay_sendme/cell.cjs');
 
 var _a, _b;
+/**
+ * Adapt the internal Opaque/Writable duplex to raw bytes for public consumers.
+ * Owns `opaque`'s streams — do not also pipe `secret.outer` elsewhere.
+ */
+function bytesOuterFromOpaque(opaque) {
+    const readable = opaque.readable.pipeThrough(new TransformStream({
+        transform(chunk, controller) {
+            controller.enqueue(chunk.bytes);
+        },
+    }));
+    const toOpaque = new TransformStream({
+        transform(chunk, controller) {
+            controller.enqueue(new binary.Opaque(chunk));
+        },
+    });
+    void toOpaque.readable.pipeTo(opaque.writable).catch(() => { });
+    return { readable, writable: toOpaque.writable };
+}
+/**
+ * Wrap a Uint8Array duplex as hazae41 Opaque/Writable (Cadenas TLS, Fleche, …).
+ */
+function asOpaqueDuplex(bytes) {
+    const readable = bytes.readable.pipeThrough(new TransformStream({
+        transform(chunk, controller) {
+            controller.enqueue(new binary.Opaque(chunk));
+        },
+    }));
+    const fromWritable = new TransformStream({
+        transform(chunk, controller) {
+            controller.enqueue(binary.Writable.writeToBytesOrThrow(chunk));
+        },
+    });
+    void fromWritable.readable.pipeTo(bytes.writable).catch(() => { });
+    return { readable, writable: fromWritable.writable };
+}
 class TorStreamDuplex {
     #secret;
+    #outer;
     constructor(secret) {
         this.#secret = secret;
+        this.#outer = bytesOuterFromOpaque(secret.outer);
     }
     [Symbol.dispose]() {
         this.close();
@@ -27,11 +64,9 @@ class TorStreamDuplex {
     get type() {
         return this.#secret.type;
     }
-    get inner() {
-        return this.#secret.inner;
-    }
+    /** Raw byte duplex (Uint8Array in, Uint8Array out). */
     get outer() {
-        return this.#secret.outer;
+        return this.#outer;
     }
     error(reason) {
         this.#secret.error(reason);
@@ -209,4 +244,5 @@ _b = SecretTorStreamDuplex;
 exports.RelayEndedError = RelayEndedError;
 exports.SecretTorStreamDuplex = SecretTorStreamDuplex;
 exports.TorStreamDuplex = TorStreamDuplex;
+exports.asOpaqueDuplex = asOpaqueDuplex;
 //# sourceMappingURL=stream.cjs.map

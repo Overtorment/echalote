@@ -41,6 +41,7 @@ import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas"
 import { fetch } from "@hazae41/fleche"
 import {
   TorClientDuplex,
+  asOpaqueDuplex,
   buildExitCircuit,
   createMeekStream,
 } from "@hazae41/echalote"
@@ -71,13 +72,14 @@ const tcp = await circuit.openOrThrow(
   AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
 )
 
-// 4) TLS + HTTP over that stream
+// 4) TLS + HTTP — `tcp.outer` is Uint8Array; wrap for Cadenas Opaque/Writable
+const opaque = asOpaqueDuplex(tcp.outer)
 const tls = new TlsClientDuplex({
   host_name: "check.torproject.org",
   ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
 })
-tcp.outer.readable.pipeTo(tls.inner.writable).catch(() => {})
-tls.inner.readable.pipeTo(tcp.outer.writable).catch(() => {})
+opaque.readable.pipeTo(tls.inner.writable).catch(() => {})
+tls.inner.readable.pipeTo(opaque.writable).catch(() => {})
 
 const res = await fetch("https://check.torproject.org/api/ip", {
   stream: tls.outer,
@@ -104,7 +106,8 @@ tor.close()
 | `fetchMicrodescConsensus(signal?, opts?)` | Clearnet microdesc consensus from directory authorities. |
 | `fetchMicrodesc(head, signal?, opts?)` | Clearnet microdescriptor body + digest check. |
 | `buildExitCircuit(client, signal?, opts?)` | Create + extend middle + exit using the clearnet helpers above. |
-| `Circuit` / `openOrThrow` | Open a stream to `hostname:port` through the circuit. |
+| `Circuit` / `openOrThrow` | Open a stream to `hostname:port`. `stream.outer` is raw `Uint8Array`. |
+| `asOpaqueDuplex(bytes)` | Wrap a Uint8Array duplex for hazae41 Cadenas/Fleche (`Opaque`/`Writable`). |
 
 ### `buildExitCircuit` options
 

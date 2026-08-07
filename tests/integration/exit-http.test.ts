@@ -7,6 +7,7 @@ import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import { fetch as flecheFetch } from "@hazae41/fleche";
 import {
   TorClientDuplex,
+  asOpaqueDuplex,
   buildExitCircuit,
   createMeekStream,
 } from "../../src/mods/index.ts";
@@ -43,8 +44,9 @@ async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: st
           host_name: "check.torproject.org",
           ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
         });
-        tcp.outer.readable.pipeTo(tls.inner.writable).catch(() => {});
-        tls.inner.readable.pipeTo(tcp.outer.writable).catch(() => {});
+        const opaque = asOpaqueDuplex(tcp.outer);
+        opaque.readable.pipeTo(tls.inner.writable).catch(() => {});
+        tls.inner.readable.pipeTo(opaque.writable).catch(() => {});
 
         const res = await flecheFetch("https://check.torproject.org/api/ip", {
           stream: tls.outer,

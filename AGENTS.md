@@ -63,6 +63,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 - Prefer characterization tests before swaps; keep wasm vector fixtures.
 - After circuit/directory changes, run `bun run test:integration` (or CI).
 - Keep `buildExitCircuit` as the shared high-level API.
+- `TorStreamDuplex.outer` is raw `Uint8Array`. Opaque stays internal; use `asOpaqueDuplex` only for hazae41 Cadenas/Fleche piping.
 - After entrypoint or path-alias changes, run `npm run build` and verify `node` can `import` / `require` from `dist/`.
 
 ## Style

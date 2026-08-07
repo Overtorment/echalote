@@ -5,14 +5,18 @@ import { SuperEventTarget, CloseEvents, ErrorEvents } from '@hazae41/plume';
 import { SecretCircuit } from './circuit.js';
 import { RelayEndReason } from './binary/cells/relayed/relay_end/reason.js';
 
+/**
+ * Wrap a Uint8Array duplex as hazae41 Opaque/Writable (Cadenas TLS, Fleche, …).
+ */
+declare function asOpaqueDuplex(bytes: ReadableWritablePair<Uint8Array, Uint8Array>): ReadableWritablePair<Opaque, Writable>;
 declare class TorStreamDuplex {
     #private;
     constructor(secret: SecretTorStreamDuplex);
     [Symbol.dispose](): void;
     get id(): number;
     get type(): SecretTorStreamDuplexType;
-    get inner(): ReadableWritablePair<Writable, Opaque<Uint8Array>>;
-    get outer(): ReadableWritablePair<Opaque<Uint8Array>, Writable>;
+    /** Raw byte duplex (Uint8Array in, Uint8Array out). */
+    get outer(): ReadableWritablePair<Uint8Array, Uint8Array>;
     error(reason?: unknown): void;
     close(): void;
 }
@@ -48,5 +52,5 @@ declare class SecretTorStreamDuplex {
     error(reason?: unknown): void;
 }
 
-export { RelayEndedError, SecretTorStreamDuplex, TorStreamDuplex };
+export { RelayEndedError, SecretTorStreamDuplex, TorStreamDuplex, asOpaqueDuplex };
 export type { SecretTorStreamDuplexType, TorStreamEvents };

@@ -11,12 +11,63 @@ import { RelayConnectedCell } from "./binary/cells/relayed/relay_connected/cell.
 import { RelayEndReason, RelayEndReasonOther } from "./binary/cells/relayed/relay_end/reason.js";
 import { RelaySendmeStreamCell } from "./binary/cells/relayed/relay_sendme/cell.js";
 
+/**
+ * Adapt the internal Opaque/Writable duplex to raw bytes for public consumers.
+ * Owns `opaque`'s streams — do not also pipe `secret.outer` elsewhere.
+ */
+function bytesOuterFromOpaque(
+  opaque: ReadableWritablePair<Opaque, Writable>,
+): ReadableWritablePair<Uint8Array, Uint8Array> {
+  const readable = opaque.readable.pipeThrough(
+    new TransformStream<Opaque, Uint8Array>({
+      transform(chunk, controller) {
+        controller.enqueue(chunk.bytes)
+      },
+    }),
+  )
+
+  const toOpaque = new TransformStream<Uint8Array, Opaque>({
+    transform(chunk, controller) {
+      controller.enqueue(new Opaque(chunk))
+    },
+  })
+  void toOpaque.readable.pipeTo(opaque.writable).catch(() => {})
+
+  return { readable, writable: toOpaque.writable }
+}
+
+/**
+ * Wrap a Uint8Array duplex as hazae41 Opaque/Writable (Cadenas TLS, Fleche, …).
+ */
+export function asOpaqueDuplex(
+  bytes: ReadableWritablePair<Uint8Array, Uint8Array>,
+): ReadableWritablePair<Opaque, Writable> {
+  const readable = bytes.readable.pipeThrough(
+    new TransformStream<Uint8Array, Opaque>({
+      transform(chunk, controller) {
+        controller.enqueue(new Opaque(chunk))
+      },
+    }),
+  )
+
+  const fromWritable = new TransformStream<Writable, Uint8Array>({
+    transform(chunk, controller) {
+      controller.enqueue(Writable.writeToBytesOrThrow(chunk))
+    },
+  })
+  void fromWritable.readable.pipeTo(bytes.writable).catch(() => {})
+
+  return { readable, writable: fromWritable.writable }
+}
+
 export class TorStreamDuplex {
 
   readonly #secret: SecretTorStreamDuplex
+  readonly #outer: ReadableWritablePair<Uint8Array, Uint8Array>
 
   constructor(secret: SecretTorStreamDuplex) {
     this.#secret = secret
+    this.#outer = bytesOuterFromOpaque(secret.outer)
   }
 
   [Symbol.dispose]() {
@@ -31,12 +82,9 @@ export class TorStreamDuplex {
     return this.#secret.type
   }
 
-  get inner() {
-    return this.#secret.inner
-  }
-
+  /** Raw byte duplex (Uint8Array in, Uint8Array out). */
   get outer() {
-    return this.#secret.outer
+    return this.#outer
   }
 
   error(reason?: unknown) {
