@@ -25,9 +25,11 @@
         "@noble/hashes": "1.8.0",
       },
       "devDependencies": {
+        "@hazae41/aes.wasm": "1.0.3",
         "@hazae41/deimos": "^1.0.6",
         "@hazae41/phobos": "^1.0.10",
         "@hazae41/rimraf": "^1.0.1",
+        "@hazae41/rsa.wasm": "1.0.14",
         "@hazae41/saumon": "^0.2.14",
         "@rollup/plugin-inject": "^5.0.5",
         "@rollup/plugin-typescript": "^11.1.6",
@@ -39,11 +41,9 @@
         "typescript": "^5.5.4",
       },
       "peerDependencies": {
-        "@hazae41/aes.wasm": "1.0.0",
         "@hazae41/base16": "1.0.18",
         "@hazae41/base64": "1.0.15",
         "@hazae41/ed25519": "2.1.21",
-        "@hazae41/rsa.wasm": "1.0.10",
         "@hazae41/sha1": "1.1.14",
         "@hazae41/x25519": "2.2.9",
       },
@@ -68,7 +68,7 @@
 
     "@babel/highlight": ["@babel/highlight@7.24.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.24.7", "chalk": "^2.4.2", "js-tokens": "^4.0.0", "picocolors": "^1.0.0" } }, "sha512-EStJpq4OuY8xYfhGVXngigBJRWxftKX9ksiGDnmlY3o7B/V7KIAc9X4oiK87uPJSc/vs5L869bem5fhZa8caZw=="],
 
-    "@hazae41/aes.wasm": ["@hazae41/aes.wasm@1.0.0", "", { "peerDependencies": { "@hazae41/memory.wasm": "^1.0.9" } }, "sha512-8h64CrQABbVdpPxm4lfCV614/Gh6TynHy6RZkhZqSGRuc4hkYH6ZyYqfbK5mp3etb6WwifZGLEw+a3Ba3oWaVQ=="],
+    "@hazae41/aes.wasm": ["@hazae41/aes.wasm@1.0.3", "", { "peerDependencies": { "@hazae41/memory.wasm": "^1.0.27" } }, "sha512-hWFukqQ7XBBtuuNm2HwbSx1wW5b20QJ9zhWmUIe8MjLBGU8RwkhIYmB/EeJFPdKxS+c9WbtGg6f145g3azPaKA=="],
 
     "@hazae41/asn1": ["@hazae41/asn1@1.3.31", "", { "dependencies": { "@hazae41/base16": "^1.0.18", "@hazae41/binary": "^1.3.5", "@hazae41/bytes": "^1.2.11", "@hazae41/cursor": "^1.2.4" } }, "sha512-vuErGzgaZDxyEjmhkKHWciwwHvR87lLVqIhs+FLVamBSHZLGOwewgqUlgOK9bNfK6WFB6N7grLX/MJSe3us+PQ=="],
 
@@ -120,7 +120,7 @@
 
     "@hazae41/rimraf": ["@hazae41/rimraf@1.0.1", "", { "bin": { "rimraf": "dist/index.mjs" } }, "sha512-EmzbyXflKMxnfiEAsE2jn84Bo2WeTxPasdasQ0JP4gisCa3n9qrB2tiR9fmRsrkS6wH/H16oBsu4dkyfaJiKQw=="],
 
-    "@hazae41/rsa.wasm": ["@hazae41/rsa.wasm@1.0.10", "", { "peerDependencies": { "@hazae41/memory.wasm": "^1.0.9" } }, "sha512-pREGQX7tDM/lzlGRId38rXR9yzY30p2MERbzcCW9l4QvEmRo7dEL9bmn6Jysj529aglSNkYXD5wMJh9khZDLwQ=="],
+    "@hazae41/rsa.wasm": ["@hazae41/rsa.wasm@1.0.14", "", { "peerDependencies": { "@hazae41/memory.wasm": "^1.0.27" } }, "sha512-EoimiN7oc8HEhT/plofp6e0fNjDiA04ZDFn886oArOzsSPuNAvePGNfmhQ1QpKssOCy7cpcmsqxjSiswfGlz3A=="],
 
     "@hazae41/saumon": ["@hazae41/saumon@0.2.14", "", { "bin": { "saumon": "dist/cli/index.cli.mjs" } }, "sha512-h2xlhg6f8STAQS0J6is1NkL5FvSW37lEuzVAXr5qvQ1DaR5LG2oGn7WUiVN1ZBkuZhIZ3zeeLptEYCul/9RWAw=="],
 

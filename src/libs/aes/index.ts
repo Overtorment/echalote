@@ -1,8 +1,11 @@
 /**
  * Drop-in replacement for `@hazae41/aes.wasm` using @noble/ciphers.
  * Same surface: Memory, Aes128Ctr128BEKey, AesWasm.initBundled().
+ *
+ * Counter mode keeps a mid-block keystream offset — required for Tor relay
+ * cells (509-byte payloads are not a multiple of 16).
  */
-import { ctr } from "@noble/ciphers/aes.js"
+import { unsafe } from "@noble/ciphers/aes.js"
 
 export class Memory {
   readonly #bytes: Uint8Array
@@ -34,23 +37,34 @@ function incrementBe(counter: Uint8Array) {
 }
 
 export class Aes128Ctr128BEKey {
-  readonly #key: Uint8Array
-  readonly #nonce: Uint8Array
+  readonly #xk: ReturnType<typeof unsafe.expandKeyLE>
+  readonly #counter: Uint8Array
+  readonly #keystream = new Uint8Array(16)
+  #offset = 16
 
   constructor(key: Memory, iv: Memory) {
-    this.#key = key.bytes.slice()
-    this.#nonce = iv.bytes.slice()
+    this.#xk = unsafe.expandKeyLE(key.bytes.slice())
+    this.#counter = iv.bytes.slice()
   }
 
   [Symbol.dispose]() { }
 
   apply_keystream(memory: Memory): void {
     const bytes = memory.bytes
-    if (bytes.length === 0) return
-    const out = ctr(this.#key, this.#nonce).encrypt(bytes.slice())
-    bytes.set(out)
-    const blocks = Math.ceil(bytes.length / 16)
-    for (let i = 0; i < blocks; i++) incrementBe(this.#nonce)
+    let i = 0
+    while (i < bytes.length) {
+      if (this.#offset >= 16) {
+        this.#keystream.set(this.#counter)
+        unsafe.encryptBlock(this.#xk, this.#keystream)
+        incrementBe(this.#counter)
+        this.#offset = 0
+      }
+      const n = Math.min(16 - this.#offset, bytes.length - i)
+      for (let j = 0; j < n; j++)
+        bytes[i + j]! ^= this.#keystream[this.#offset + j]!
+      i += n
+      this.#offset += n
+    }
   }
 }
 
