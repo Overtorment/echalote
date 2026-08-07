@@ -50,6 +50,7 @@ var ciphers = require('./mods/tor/ciphers.cjs');
 var cell$n = require('./mods/tor/binary/cells/direct/vpadding/cell.cjs');
 var cell$o = require('./mods/tor/binary/cells/direct/versions/cell.cjs');
 var buildExitCircuit = require('./mods/tor/directory/build-exit-circuit.cjs');
+var exitDialer = require('./mods/tor/directory/exit-dialer.cjs');
 var snowflake = require('./mods/snowflake/snowflake.cjs');
 var init = require('./mods/crypto/init.cjs');
 
@@ -183,6 +184,7 @@ Object.defineProperty(exports, "TorCiphers", {
 exports.VariablePaddingCell = cell$n.VariablePaddingCell;
 exports.VersionsCell = cell$o.VersionsCell;
 exports.buildExitCircuit = buildExitCircuit.buildExitCircuit;
+exports.createExitDialer = exitDialer.createExitDialer;
 exports.createSnowflakeStream = snowflake.createSnowflakeStream;
 exports.initBundledCrypto = init.initBundledCrypto;
 //# sourceMappingURL=index.cjs.map

@@ -31,74 +31,49 @@ Crypto helpers (`base16` / `base64` / `ed25519` / `sha1` / `x25519`) are normal 
 
 Recommended path for clearnet destinations (`host:port` via a Tor exit):
 
-1. Meek transport → Tor client  
-2. `buildExitCircuit` (clearnet consensus/microdescs + Tor extends)  
-3. `circuit.openOrThrow(host, port)`  
-4. Optional TLS/HTTP with [Cadenas](https://github.com/hazae41/cadenas) + [Fleche](https://github.com/hazae41/fleche)
-
 ```ts
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas"
 import { fetch } from "@hazae41/fleche"
-import {
-  TorClientDuplex,
-  asOpaqueDuplex,
-  buildExitCircuit,
-  createMeekStream,
-} from "@hazae41/echalote"
+import { asOpaqueDuplex, createExitDialer } from "@hazae41/echalote"
 
 const signal = AbortSignal.timeout(120_000)
+const dialer = createExitDialer()
 
-// 1) Meek bridge (defaults to Tor CDN77; Azure meek is dead)
-const meek = await createMeekStream()
-const tor = new TorClientDuplex()
-// TorClientDuplex constructor runs initBundledCrypto() for you.
+try {
+  // Meek + exit circuit + RELAY_BEGIN (reuses Tor client across dials)
+  const tcp = await dialer.dial("check.torproject.org", 443, signal)
 
-meek.duplex.outer.readable.pipeTo(tor.inner.writable).catch(() => {})
-tor.inner.readable.pipeTo(meek.duplex.outer.writable).catch(() => {})
+  // `tcp.outer` is Uint8Array; wrap for Cadenas Opaque/Writable
+  const opaque = asOpaqueDuplex(tcp.outer)
+  const tls = new TlsClientDuplex({
+    host_name: "check.torproject.org",
+    ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
+  })
+  opaque.readable.pipeTo(tls.inner.writable).catch(() => {})
+  tls.inner.readable.pipeTo(opaque.writable).catch(() => {})
 
-await tor.waitOrThrow(signal)
+  const res = await fetch("https://check.torproject.org/api/ip", {
+    stream: tls.outer,
+    signal,
+    preventAbort: true,
+    preventCancel: true,
+    preventClose: true,
+  })
+  console.log(await res.json()) // { IsTor: true, IP: "..." }
 
-// 2) 3-hop exit circuit (clearnet directory + Tor CREATE/EXTEND)
-const circuit = await buildExitCircuit(tor, signal, {
-  attempts: 3,
-  extendTimeoutMs: 15_000,
-})
-
-// 3) RELAY_BEGIN to a clearnet host
-const tcp = await circuit.openOrThrow(
-  "check.torproject.org",
-  443,
-  { wait: true },
-  AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
-)
-
-// 4) TLS + HTTP — `tcp.outer` is Uint8Array; wrap for Cadenas Opaque/Writable
-const opaque = asOpaqueDuplex(tcp.outer)
-const tls = new TlsClientDuplex({
-  host_name: "check.torproject.org",
-  ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
-})
-opaque.readable.pipeTo(tls.inner.writable).catch(() => {})
-tls.inner.readable.pipeTo(opaque.writable).catch(() => {})
-
-const res = await fetch("https://check.torproject.org/api/ip", {
-  stream: tls.outer,
-  signal,
-  preventAbort: true,
-  preventCancel: true,
-  preventClose: true,
-})
-console.log(await res.json()) // { IsTor: true, IP: "..." }
-
-tcp.close()
-await circuit.close()
-tor.close()
+  tcp.close() // also closes the exit circuit
+} finally {
+  await dialer.dispose()
+}
 ```
+
+Lower-level pieces (`createMeekStream`, `TorClientDuplex`, `buildExitCircuit`, `openOrThrow`) remain available if you need a custom pipeline.
 
 ## API overview
 
 | Export | Role |
 |--------|------|
+| `createExitDialer(opts?)` | **Happy path:** meek + exit circuit + `dial(host, port)` → `TorStreamDuplex`. |
 | `createMeekStream(url?)` | HTTP meek transport. Default `DEFAULT_MEEK_URL` (CDN77). |
 | `DEFAULT_MEEK_URL` | Current Tor Browser CDN77 meek backend. |
 | `TorClientDuplex` | Tor protocol state machine. Pipe a transport duplex to `inner`. |

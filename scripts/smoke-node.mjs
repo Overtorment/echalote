@@ -15,6 +15,7 @@ for (const name of [
   "createMeekStream",
   "TorClientDuplex",
   "buildExitCircuit",
+  "createExitDialer",
   "fetchMicrodescConsensus",
   "initBundledCrypto",
 ]) {
