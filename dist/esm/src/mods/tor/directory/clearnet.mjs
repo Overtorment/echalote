@@ -26,6 +26,10 @@ const AUTHORITY_HOSTS = [
 const CONSENSUS_MIRRORS = AUTHORITY_HOSTS.map((host) => `http://${host}/tor/status-vote/current/consensus-microdesc`);
 let cached = null;
 const CACHE_MS = 30 * 60 * 1000;
+/** Cap each GET so a hung host cannot burn the whole abort budget. */
+const MICRODESC_FETCH_MS = 8_000;
+/** Full microdesc consensus is ~3.5MB; allow more headroom than microdescs. */
+const CONSENSUS_FETCH_MS = 30_000;
 function sha256Base64Unpadded(bytes) {
     const hash = sha256(bytes);
     return Buffer.from(hash).toString("base64").replace(/=+$/, "");
@@ -41,13 +45,16 @@ function maybeInflate(buf) {
     }
     return buf;
 }
+function withFetchTimeout(signal, ms) {
+    return AbortSignal.any([signal, AbortSignal.timeout(ms)]);
+}
 async function fetchBytes(url, signal) {
     try {
         // Tor `.z` bodies are often raw zlib without Content-Encoding.
         // Bun's fetch tries to inflate them and throws ZlibError unless decompress
         // is disabled; Node ignores the unknown option / does not auto-inflate.
         const init = {
-            signal,
+            signal: withFetchTimeout(signal, MICRODESC_FETCH_MS),
             decompress: false,
         };
         const res = await fetch(url, init);
@@ -78,7 +85,9 @@ async function fetchMicrodescConsensus(signal = new AbortController().signal, op
     let lastError;
     for (const url of mirrors) {
         try {
-            const res = await fetch(url, { signal });
+            const res = await fetch(url, {
+                signal: withFetchTimeout(signal, CONSENSUS_FETCH_MS),
+            });
             if (!res.ok)
                 throw new Error(`HTTP ${res.status}`);
             const text = await res.text();
@@ -93,6 +102,8 @@ async function fetchMicrodescConsensus(signal = new AbortController().signal, op
             return consensus;
         }
         catch (err) {
+            if (signal.aborted)
+                throw err;
             lastError = err;
         }
     }
@@ -107,17 +118,21 @@ async function fetchMicrodescConsensus(signal = new AbortController().signal, op
 async function fetchMicrodesc(head, signal = new AbortController().signal, options = {}) {
     const dig = head.microdesc;
     const authorityHosts = options.authorityHosts ?? AUTHORITY_HOSTS;
+    // Prefer directory authorities: many relay dirports are firewalled or hang
+    // from CI/cloud networks and would otherwise burn the whole abort budget.
     const urls = [];
-    if (head.dirport > 0) {
-        urls.push(`http://${head.hostname}:${head.dirport}/tor/micro/d/${dig}`);
-        urls.push(`http://${head.hostname}:${head.dirport}/tor/micro/d/${dig}.z`);
-    }
     for (const host of authorityHosts) {
-        urls.push(`http://${host}/tor/micro/d/${dig}`);
         urls.push(`http://${host}/tor/micro/d/${dig}.z`);
+        urls.push(`http://${host}/tor/micro/d/${dig}`);
+    }
+    if (head.dirport > 0) {
+        urls.push(`http://${head.hostname}:${head.dirport}/tor/micro/d/${dig}.z`);
+        urls.push(`http://${head.hostname}:${head.dirport}/tor/micro/d/${dig}`);
     }
     let lastError = new Error("no microdesc URL succeeded");
     for (const url of urls) {
+        if (signal.aborted)
+            break;
         try {
             const raw = await fetchBytes(url, signal);
             if (!raw)
