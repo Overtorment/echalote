@@ -47,6 +47,7 @@ export { Consensus } from './tor/consensus/consensus.js';
 export { HASH_LEN, KEY_LEN } from './tor/constants.js';
 export { BuildExitCircuitOptions, buildExitCircuit } from './tor/directory/build-exit-circuit.js';
 export { AUTHORITY_HOSTS, CONSENSUS_MIRRORS, FetchMicrodescConsensusOptions, FetchMicrodescOptions, fetchMicrodesc, fetchMicrodescConsensus } from './tor/directory/clearnet.js';
+export { ExitDialer, ExitDialerOptions, createExitDialer } from './tor/directory/exit-dialer.js';
 export { InvalidTorStateError, InvalidTorVersionError, TorClientError, Unimplemented } from './tor/errors.js';
 export { TorHandshakedState, TorHandshakingState, TorNoneState, TorState, TorVersionedState } from './tor/state.js';
 export { RelayEndedError, SecretTorStreamDuplex, SecretTorStreamDuplexType, TorStreamDuplex, TorStreamEvents, asOpaqueDuplex } from './tor/stream.js';

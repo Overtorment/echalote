@@ -47,6 +47,7 @@ export { Consensus } from './tor/consensus/consensus.mjs';
 export { HASH_LEN, KEY_LEN } from './tor/constants.mjs';
 export { buildExitCircuit } from './tor/directory/build-exit-circuit.mjs';
 export { AUTHORITY_HOSTS, CONSENSUS_MIRRORS, fetchMicrodesc, fetchMicrodescConsensus } from './tor/directory/clearnet.mjs';
+export { createExitDialer } from './tor/directory/exit-dialer.mjs';
 export { InvalidTorStateError, InvalidTorVersionError, Unimplemented } from './tor/errors.mjs';
 export { RelayEndedError, SecretTorStreamDuplex, TorStreamDuplex, asOpaqueDuplex } from './tor/stream.mjs';
 export { Target } from './tor/target.mjs';

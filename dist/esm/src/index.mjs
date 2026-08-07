@@ -50,6 +50,7 @@ export { TorCiphers } from './mods/tor/ciphers.mjs';
 export { VariablePaddingCell } from './mods/tor/binary/cells/direct/vpadding/cell.mjs';
 export { VersionsCell } from './mods/tor/binary/cells/direct/versions/cell.mjs';
 export { buildExitCircuit } from './mods/tor/directory/build-exit-circuit.mjs';
+export { createExitDialer } from './mods/tor/directory/exit-dialer.mjs';
 export { createSnowflakeStream } from './mods/snowflake/snowflake.mjs';
 export { initBundledCrypto } from './mods/crypto/init.mjs';
 //# sourceMappingURL=index.mjs.map

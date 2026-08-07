@@ -18,6 +18,7 @@ export { CrossCert } from './mods/tor/binary/certs/cross/cert.js';
 export { DEFAULT_MEEK_URL, createMeekStream } from './mods/meek/meek.js';
 export { DestroyCell } from './mods/tor/binary/cells/direct/destroy/cell.js';
 export { Ed25519Cert, Extensions, UnknownCertExtensionError } from './mods/tor/binary/certs/ed25519/cert.js';
+export { ExitDialer, ExitDialerOptions, createExitDialer } from './mods/tor/directory/exit-dialer.js';
 export { FragmentOverflowError, TurboFrame, TurboFrameError, TurboFrameParams, UnexpectedContinuationError } from './mods/snowflake/turbo/frame.js';
 export { Guard, SecretTorClientDuplex, SecretTorEvents, TorClientDuplex, TorClientDuplexEvents } from './mods/tor/client.js';
 export { HASH_LEN, KEY_LEN } from './mods/tor/constants.js';

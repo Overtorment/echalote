@@ -1,88 +1,53 @@
 /**
- * Live integration: meek → exit circuit → HTTPS check.torproject.org/api/ip
+ * Live integration: createExitDialer → HTTPS check.torproject.org/api/ip
  * Requires outbound network (CDN77 meek, directory authorities, exit traffic).
  */
 import { describe, expect, test } from "@jest/globals";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import { fetch as flecheFetch } from "@hazae41/fleche";
 import {
-  TorClientDuplex,
   asOpaqueDuplex,
-  buildExitCircuit,
-  createMeekStream,
+  createExitDialer,
 } from "../../src/mods/index.ts";
 
 const OVERALL_MS = 120_000;
 const ATTEMPTS = 3;
 
 async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: string }> {
-  const meek = await createMeekStream();
-  const client = new TorClientDuplex();
-
-  const pipeA = meek.duplex.outer.readable
-    .pipeTo(client.inner.writable)
-    .catch(() => {});
-  const pipeB = client.inner.readable
-    .pipeTo(meek.duplex.outer.writable)
-    .catch(() => {});
-
+  const dialer = createExitDialer();
   try {
-    await client.waitOrThrow(signal);
-    const circuit = await buildExitCircuit(client, signal, {
-      attempts: 3,
-      extendTimeoutMs: 15_000,
-    });
+    const tcp = await dialer.dial("check.torproject.org", 443, signal);
     try {
-      const tcp = await circuit.openOrThrow(
-        "check.torproject.org",
-        443,
-        { wait: true },
-        AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
-      );
-      try {
-        const tls = new TlsClientDuplex({
-          host_name: "check.torproject.org",
-          ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
-        });
-        const opaque = asOpaqueDuplex(tcp.outer);
-        opaque.readable.pipeTo(tls.inner.writable).catch(() => {});
-        tls.inner.readable.pipeTo(opaque.writable).catch(() => {});
+      const opaque = asOpaqueDuplex(tcp.outer);
+      const tls = new TlsClientDuplex({
+        host_name: "check.torproject.org",
+        ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
+      });
+      opaque.readable.pipeTo(tls.inner.writable).catch(() => {});
+      tls.inner.readable.pipeTo(opaque.writable).catch(() => {});
 
-        const res = await flecheFetch("https://check.torproject.org/api/ip", {
-          stream: tls.outer,
-          signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
-          preventAbort: true,
-          preventCancel: true,
-          preventClose: true,
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = (await res.json()) as { IsTor?: boolean; IP?: string };
-        if (typeof body.IsTor !== "boolean" || typeof body.IP !== "string" || !body.IP) {
-          throw new Error(`unexpected body: ${JSON.stringify(body)}`);
-        }
-        return { IsTor: body.IsTor, IP: body.IP };
-      } finally {
-        try {
-          tcp.close();
-        } catch {
-          // ignore
-        }
+      const res = await flecheFetch("https://check.torproject.org/api/ip", {
+        stream: tls.outer,
+        signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+        preventAbort: true,
+        preventCancel: true,
+        preventClose: true,
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { IsTor?: boolean; IP?: string };
+      if (typeof body.IsTor !== "boolean" || typeof body.IP !== "string" || !body.IP) {
+        throw new Error(`unexpected body: ${JSON.stringify(body)}`);
       }
+      return { IsTor: body.IsTor, IP: body.IP };
     } finally {
       try {
-        await circuit.close();
+        tcp.close();
       } catch {
         // ignore
       }
     }
   } finally {
-    try {
-      client.close();
-    } catch {
-      // ignore
-    }
-    void pipeA;
-    void pipeB;
+    await dialer.dispose();
   }
 }
 

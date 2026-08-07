@@ -8,7 +8,9 @@ Fork of [hazae41/echalote](https://github.com/hazae41/echalote) for **Node.js (n
 
 Primary happy path:
 
-`createMeekStream` → `TorClientDuplex` → `buildExitCircuit` → `circuit.openOrThrow(host, port)`
+`createExitDialer()` → `dialer.dial(host, port)` → `stream.outer` (Uint8Array)
+
+Lower-level: `createMeekStream` → `TorClientDuplex` → `buildExitCircuit` → `openOrThrow`.
 
 ## Commands
 
@@ -38,7 +40,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 | `src/mods/meek/` | Meek transport; `DEFAULT_MEEK_URL` = CDN77 |
 | `src/mods/tor/client.ts` | `TorClientDuplex`; calls `initBundledCrypto()` |
 | `src/mods/tor/circuit.ts` | Circuit create/extend/open primitives |
-| `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` |
+| `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` + `createExitDialer` |
 | `src/mods/crypto/` | Noble/WebCrypto adapters |
 | `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
 | `dist/` | Shipped in git for `github:` installs (Bun won't run prepare build tools). Rebuild with `npm run build` after source changes. |
@@ -62,7 +64,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 
 - Prefer characterization tests before swaps; keep wasm vector fixtures.
 - After circuit/directory changes, run `bun run test:integration` (or CI).
-- Keep `buildExitCircuit` as the shared high-level API.
+- Prefer `createExitDialer` for consumers; keep `buildExitCircuit` for custom pipelines.
 - `TorStreamDuplex.outer` is raw `Uint8Array`. Opaque stays internal; use `asOpaqueDuplex` only for hazae41 Cadenas/Fleche piping.
 - After entrypoint or path-alias changes, run `npm run build` and verify `node` can `import` / `require` from `dist/`.
 
