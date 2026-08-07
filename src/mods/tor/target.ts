@@ -1,5 +1,5 @@
-import { Aes128Ctr128BEKey } from "@hazae41/aes.wasm";
-import { Uint8Array } from "@hazae41/bytes";
+import { Aes128Ctr128BEKey } from "libs/aes/index.js";
+import type { Uint8Array } from "@hazae41/bytes";
 import type { Sha1 } from "@hazae41/sha1";
 import { SecretCircuit } from "mods/tor/circuit.js";
 

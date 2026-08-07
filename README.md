@@ -1,80 +1,168 @@
-<div align="center">
-<img src="https://user-images.githubusercontent.com/4405263/219942970-2b5fb519-7bbe-491a-a12b-6b71040febe4.png" />
-</div>
+# @hazae41/echalote (Overtorment fork)
+
+Zero-copy Tor client protocol in TypeScript. This fork targets **Node.js (npm) and Bun**: working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
+
+Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
+
+> **Experimental.** Treat as unsafe for high-threat use. APIs can change.
+
+## Requirements
+
+- **Node.js ≥ 24** (Active LTS)
+- Or **Bun** (same APIs; tests use Bun)
+
+Published package is compiled JS under `dist/` (ESM + CJS + types). `npm install` / `bun install` from git/`file:` runs `prepare` → `npm run build`.
+
+## Install
 
 ```bash
-npm i @hazae41/echalote
+npm install github:Overtorment/echalote
+# or
+bun add github:Overtorment/echalote
+# local checkout:
+npm install file:../echalote
 ```
 
-[**Node Package 📦**](https://www.npmjs.com/package/@hazae41/echalote) • [**Online Demo 🌐**](https://echalote-example-next.vercel.app) • [**Next.js CodeSandbox 🪣**](https://codesandbox.io/p/github/hazae41/echalote-example-next)
+Peer crypto packages (versions are pinned — do not upgrade casually):
 
-## Use at your own risk
+```bash
+npm install @hazae41/base16@1.0.18 @hazae41/base64@1.0.15 \
+  @hazae41/ed25519@2.1.21 @hazae41/sha1@1.1.14 @hazae41/x25519@2.2.9
+```
 
-This is experimental software in early development
+`postinstall` runs `node scripts/fix-hazae41-x509.mjs` to patch `@hazae41/x509` export paths when needed.
 
-1. It has security issues
-2. Things change quickly
+## Quick start — exit stream over meek
 
-## Features
+Recommended path for clearnet destinations (`host:port` via a Tor exit):
 
-### Current features
-- 100% TypeScript and ESM
-- Zero-copy reading and writing
-- Works in the browser
-- All cryptography use either WebCrypto or reproducible WebAssembly ports of Rust implementations
-- Unsafe Tor protocol (with Ed25519, ntor, kdf-tor)
-- Meek (HTTP) transport (without domain-fronting)
-- Snowflake (WebRTC/WebSocket) transport (without domain-fronting)
-- Unsafe TLS using [Cadenas](https://github.com/hazae41/cadenas)
-- HTTP and WebSocket messaging using [Fleche](https://github.com/hazae41/fleche)
+1. Meek transport → Tor client  
+2. `buildExitCircuit` (clearnet consensus/microdescs + Tor extends)  
+3. `circuit.openOrThrow(host, port)`  
+4. Optional TLS/HTTP with [Cadenas](https://github.com/hazae41/cadenas) + [Fleche](https://github.com/hazae41/fleche)
 
-### [Upcoming features](https://github.com/sponsors/hazae41)
-- Better security
-
-## Usage
-
-```typescript
-import { createWebSocketSnowflakeStream, TorClientDuplex, Consensus } from "@hazae41/echalote"
+```ts
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas"
+import { fetch } from "@hazae41/fleche"
+import {
+  TorClientDuplex,
+  buildExitCircuit,
+  createMeekStream,
+} from "@hazae41/echalote"
 
-const tcp = await createWebSocketSnowflakeStream("wss://snowflake.bamsoftware.com/")
+const signal = AbortSignal.timeout(120_000)
+
+// 1) Meek bridge (defaults to Tor CDN77; Azure meek is dead)
+const meek = await createMeekStream()
 const tor = new TorClientDuplex()
+// TorClientDuplex constructor runs initBundledCrypto() for you.
 
-tcp.outer.readable.pipeTo(tor.inner.writable).catch(() => {})
-tor.inner.readable.pipeTo(tcp.outer.writable).catch(() => {})
+meek.duplex.outer.readable.pipeTo(tor.inner.writable).catch(() => {})
+tor.inner.readable.pipeTo(meek.duplex.outer.writable).catch(() => {})
 
-await tor.waitOrThrow()
+await tor.waitOrThrow(signal)
 
-using circuit = await tor.createOrThrow()
-const consensus = await Consensus.fetchOrThrow(circuit)
+// 2) 3-hop exit circuit (clearnet directory + Tor CREATE/EXTEND)
+const circuit = await buildExitCircuit(tor, signal, {
+  attempts: 3,
+  extendTimeoutMs: 15_000,
+})
 
-const middles = consensus.microdescs.filter(it => true
-  && it.flags.includes("Fast")
-  && it.flags.includes("Stable")
-  && it.flags.includes("V2Dir"))
+// 3) RELAY_BEGIN to a clearnet host
+const tcp = await circuit.openOrThrow(
+  "check.torproject.org",
+  443,
+  { wait: true },
+  AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
+)
 
-const exits = consensus.microdescs.filter(it => true
-  && it.flags.includes("Fast")
-  && it.flags.includes("Stable")
-  && it.flags.includes("Exit")
-  && !it.flags.includes("BadExit"))
+// 4) TLS + HTTP over that stream
+const tls = new TlsClientDuplex({
+  host_name: "check.torproject.org",
+  ciphers: [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384],
+})
+tcp.outer.readable.pipeTo(tls.inner.writable).catch(() => {})
+tls.inner.readable.pipeTo(tcp.outer.writable).catch(() => {})
 
-const middle = middles[Math.floor(Math.random() * middles.length)]
-const middle2 = await Consensus.Microdesc.fetchOrThrow(circuit, middle)
-await circuit.extendOrThrow(middle2, AbortSignal.timeout(5000))
+const res = await fetch("https://check.torproject.org/api/ip", {
+  stream: tls.outer,
+  signal,
+  preventAbort: true,
+  preventCancel: true,
+  preventClose: true,
+})
+console.log(await res.json()) // { IsTor: true, IP: "..." }
 
-const exit = exits[Math.floor(Math.random() * middles.length)]
-const exit2 = await Consensus.Microdesc.fetchOrThrow(circuit, exit)
-await circuit.extendOrThrow(exit2, AbortSignal.timeout(5000))
-
-const ttcp = await circuit.openOrThrow("twitter.com", 443)
-
-const ciphers = [Ciphers.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384]
-const ttls = new TlsClientDuplex({ host_name: url.hostname, ciphers })
-
-ttcp.outer.readable.pipeTo(ttls.inner.writable).catch(() => { })
-ttls.inner.readable.pipeTo(ttcp.outer.writable).catch(() => { })
-
-const response = await fetch("https://twitter.com", { stream: ttls.outer })
-const text = await response.text()
+tcp.close()
+await circuit.close()
+tor.close()
 ```
+
+## API overview
+
+| Export | Role |
+|--------|------|
+| `createMeekStream(url?)` | HTTP meek transport. Default `DEFAULT_MEEK_URL` (CDN77). |
+| `DEFAULT_MEEK_URL` | Current Tor Browser CDN77 meek backend. |
+| `TorClientDuplex` | Tor protocol state machine. Pipe a transport duplex to `inner`. |
+| `initBundledCrypto()` | Ed25519 (WebCrypto) + X25519/SHA-1 (@noble). Called from the client ctor. |
+| `fetchMicrodescConsensus(signal?, opts?)` | Clearnet microdesc consensus from directory authorities. |
+| `fetchMicrodesc(head, signal?, opts?)` | Clearnet microdescriptor body + digest check. |
+| `buildExitCircuit(client, signal?, opts?)` | Create + extend middle + exit using the clearnet helpers above. |
+| `Circuit` / `openOrThrow` | Open a stream to `hostname:port` through the circuit. |
+
+### `buildExitCircuit` options
+
+```ts
+type BuildExitCircuitOptions = {
+  consensusUrls?: readonly string[] // DA consensus URLs
+  extendTimeoutMs?: number          // default 15_000
+  attempts?: number                 // rebuilds on destroyed circuit; default 3
+  pickTries?: number                // microdesc fetch candidates; default 8
+}
+```
+
+### Why clearnet directory?
+
+Fetching the full ~3.5MB microdesc consensus **through meek** often truncates. This fork fetches consensus and microdesc bodies over clearnet HTTP, then builds the circuit on Tor. Remote peers you `openOrThrow` still see the **exit** IP, not yours — but directory authorities and the meek CDN see your IP.
+
+### Lower-level / legacy
+
+You can still `createOrThrow` + `extendOrThrow` yourself, or use in-Tor `Consensus.fetchOrThrow` / `Consensus.Microdesc.fetchOrThrow`. Prefer `buildExitCircuit` for reliability over meek.
+
+Snowflake (`createWebSocketSnowflakeStream`) remains available; meek + `buildExitCircuit` is the supported happy path here.
+
+## Crypto
+
+| Algorithm | Implementation |
+|-----------|----------------|
+| Ed25519 | WebCrypto via `@hazae41/ed25519` |
+| X25519 / SHA-1 | `@noble` (via `@hazae41/x25519` / `@hazae41/sha1` adapters) |
+| AES-128-CTR (relay cells) | `@noble/ciphers` (`src/libs/aes`) |
+| RSA PKCS#1 v1.5 unprefixed verify | BigInt + Node `crypto` SPKI (`src/libs/rsa`) |
+
+No `@hazae41/aes.wasm` / `@hazae41/rsa.wasm`.
+
+## Develop
+
+```bash
+npm install                 # also runs prepare → build
+npm run build               # rollup → dist/esm, dist/cjs, dist/types
+bun run test:unit           # Bun test runner
+npm run test:unit:node      # Jest on Node (same tests)
+bun run test:integration
+npm run test:integration:node
+```
+
+Tests use `@jest/globals`. Bun rewrites those imports to its runner; npm CI runs Jest. Layout: `tests/unit/`, `tests/integration/`.
+
+## Privacy / threat model (short)
+
+- **Exit traffic:** destination sees the Tor exit address.  
+- **Meek CDN + clearnet DAs:** see the client IP.  
+- **No onion-service (HS) client** in this library.  
+- TLS via Cadenas is the upstream “unsafe TLS” stack — validate what you need for your threat model.
+
+## License
+
+MIT (see `LICENSE.md`).

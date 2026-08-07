@@ -1,4 +1,4 @@
-import { Uint8Array } from "@hazae41/bytes";
+import type { Uint8Array } from "@hazae41/bytes";
 import { Cursor } from "@hazae41/cursor";
 import { X509 } from "@hazae41/x509";
 import { ExpiredCertError, PrematureCertError } from "mods/tor/certs/certs.js";

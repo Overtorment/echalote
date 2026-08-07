@@ -1,4 +1,4 @@
-import { AesWasm } from "@hazae41/aes.wasm";
+import { AesWasm } from "libs/aes/index.js";
 import { Opaque, Readable, Writable } from "@hazae41/binary";
 import { Bytes, type Uint8Array } from "@hazae41/bytes";
 import { Cursor } from "@hazae41/cursor";

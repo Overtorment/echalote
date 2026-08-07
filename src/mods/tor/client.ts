@@ -1,18 +1,19 @@
-import { Aes128Ctr128BEKey, AesWasm } from "@hazae41/aes.wasm";
+import { Aes128Ctr128BEKey, AesWasm } from "libs/aes/index.js";
 import { Opaque, Readable, Writable } from "@hazae41/binary";
 import { Bitset } from "@hazae41/bitset";
-import { Bytes, Uint8Array } from "@hazae41/bytes";
+import { Bytes, type Uint8Array } from "@hazae41/bytes";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import { HalfDuplex } from "@hazae41/cascade";
 import { Cursor } from "@hazae41/cursor";
 import { Future } from "@hazae41/future";
 import { Mutex } from "@hazae41/mutex";
 import { CloseEvents, ErrorEvents, Plume, SuperEventTarget } from "@hazae41/plume";
-import { RsaWasm } from "@hazae41/rsa.wasm";
+import { RsaWasm } from "libs/rsa/index.js";
 import { Sha1 } from "@hazae41/sha1";
 import { X509 } from "@hazae41/x509";
 import { Resizer } from "libs/resizer/resizer.js";
 import { Console } from "mods/console/index.js";
+import { initBundledCrypto } from "mods/crypto/init.js";
 import { TypedAddress } from "mods/tor/binary/address.js";
 import { Cell } from "mods/tor/binary/cells/cell.js";
 import { AuthChallengeCell } from "mods/tor/binary/cells/direct/auth_challenge/cell.js";
@@ -167,6 +168,7 @@ export class SecretTorClientDuplex {
   }
 
   async #init() {
+    await initBundledCrypto()
     await RsaWasm.initBundled()
     await AesWasm.initBundled()
   }

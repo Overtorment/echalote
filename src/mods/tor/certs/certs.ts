@@ -1,7 +1,7 @@
 import { Writable } from "@hazae41/binary";
 import { Bytes } from "@hazae41/bytes";
 import { Ed25519 } from "@hazae41/ed25519";
-import { RsaPublicKey, RsaWasm } from "@hazae41/rsa.wasm";
+import { RsaPublicKey, RsaWasm } from "libs/rsa/index.js";
 import { X509 } from "@hazae41/x509";
 import { CrossCert, Ed25519Cert, RsaCert, UnknownCertExtensionError } from "../index.js";
 

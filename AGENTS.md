@@ -1,0 +1,72 @@
+# AGENTS.md — echalote (Overtorment fork)
+
+Guidance for AI agents and humans working in this repo. Consumer-facing docs live in `README.md`.
+
+## What this is
+
+Fork of [hazae41/echalote](https://github.com/hazae41/echalote) for **Node.js (npm) and Bun**. Package ships compiled **`dist/`** (ESM + CJS + types) via Rollup. Source stays in `src/` with path aliases (`mods/*`, `libs/*`).
+
+Primary happy path:
+
+`createMeekStream` → `TorClientDuplex` → `buildExitCircuit` → `circuit.openOrThrow(host, port)`
+
+## Commands
+
+```bash
+npm install                 # prepare → npm run build; postinstall → node x509 fix
+npm run build               # rimraf dist && rollup -c
+bun run test:unit           # Bun runner (rewrites @jest/globals → bun:test)
+npm run test:unit:node      # Jest on Node
+bun run test:integration
+npm run test:integration:node
+```
+
+Tests import from `@jest/globals` (not `bun:test`). Bun’s runner rewrites that import; npm CI uses real Jest (`jest.config.cjs` + ts-jest).
+
+CI: `.github/workflows/ci.yml` — four jobs:
+- `unit-bun` / `integration-bun` — `bun install` + `bun test`
+- `unit-npm` / `integration-npm` — `npm ci` + smoke + Jest
+
+Keep `package-lock.json` and `bun.lock` in sync when changing deps.
+
+**Engines:** Node `>=24` (Active LTS).
+
+## Layout
+
+| Path | Purpose |
+|------|---------|
+| `src/mods/meek/` | Meek transport; `DEFAULT_MEEK_URL` = CDN77 |
+| `src/mods/tor/client.ts` | `TorClientDuplex`; calls `initBundledCrypto()` |
+| `src/mods/tor/circuit.ts` | Circuit create/extend/open primitives |
+| `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` |
+| `src/mods/crypto/` | Noble/WebCrypto adapters |
+| `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
+| `dist/` | Published Node/npm artifacts (gitignored; built on install/publish) |
+| `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
+| `tests/integration/` | Live meek → exit → HTTPS check |
+| `scripts/fix-hazae41-x509.mjs` | `postinstall` (must stay **node**-runnable) |
+| `rollup.config.js` | Library-only build (no test/bench bundles) |
+
+## Hard constraints
+
+1. **Meek URL** — Never restore `meek.azureedge.net`. Use CDN77 (`DEFAULT_MEEK_URL`).
+2. **Directory over meek** — Full consensus via Tor/meek truncates (~3.5MB). Use clearnet `fetchMicrodescConsensus` / `fetchMicrodesc`, then extend on Tor.
+3. **Hazae41 pins** — Keep cursor **1.x**, mutex **2.1.x**, asn1 **&lt; 1.3.32**, binary **1.3.5**, smux/kcp **1.1.3**. Contracts in `tests/unit/deps-contracts.test.ts`. Use `overrides`.
+4. **`@hazae41/bytes` `Uint8Array`** — Runtime ESM does **not** export a value. Always `import type { Uint8Array }`.
+5. **AES-CTR** — Mid-block keystream offset required (509-byte RELAY payloads). Vectors in `tests/unit/vectors/aes-ctr-wasm.json`. No runtime aes/rsa WASM.
+6. **X25519** — Noble via `initBundledCrypto` (native WebCrypto often rejects ntor keys).
+7. **Node/npm first for the package surface** — `postinstall`/`prepare`/`build` must work with Node + npm. Do not make lifecycle scripts Bun-only. Tests may keep using Bun.
+8. **No Lefthook in `~`** — Do not install Lefthook hooks in the home git repo.
+
+## When changing crypto or circuits
+
+- Prefer characterization tests before swaps; keep wasm vector fixtures.
+- After circuit/directory changes, run `bun run test:integration` (or CI).
+- Keep `buildExitCircuit` as the shared high-level API.
+- After entrypoint or path-alias changes, run `npm run build` and verify `node` can `import` / `require` from `dist/`.
+
+## Style
+
+- Match existing TypeScript patterns in `src/` (OrThrow, duplex pipes).
+- Do not expand into onion-service (HS) client unless asked.
+- Do not commit secrets. Do not force-push `master`.
