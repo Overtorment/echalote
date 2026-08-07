@@ -22,7 +22,6 @@ jobs:
         with:
           bun-version: latest
 
-      # Skip prepare (full rollup build); tests import from src via Bun.
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
