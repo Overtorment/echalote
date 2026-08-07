@@ -29,4 +29,4 @@ jobs:
         run: bun scripts/fix-hazae41-x509.mjs
 
       - name: Run live integration test
-        run: bun test tests/integration
+        run: bun run test:integration
