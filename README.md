@@ -8,6 +8,17 @@ npm i @hazae41/echalote
 
 [**Node Package 📦**](https://www.npmjs.com/package/@hazae41/echalote) • [**Online Demo 🌐**](https://echalote-example-next.vercel.app) • [**Next.js CodeSandbox 🪣**](https://codesandbox.io/p/github/hazae41/echalote-example-next)
 
+## Overtorment fork
+
+Fork of [`hazae41/echalote`](https://github.com/hazae41/echalote) with Bun/helix3-oriented fixes:
+
+- Default meek URL → Tor CDN77 (`DEFAULT_MEEK_URL` / `createMeekStream()`)
+- Pinned hazae41 deps (cursor 1.x, mutex 2.1, asn1 1.3.31, …) + x509 export postinstall
+- `initBundledCrypto()` — Ed25519 (WebCrypto) + X25519/SHA-1 (@noble)
+- AES-128-CTR + RSA PKCS1v15 unprefixed verify without WASM (`@noble/ciphers` + BigInt)
+
+Tests: `bun test` (see `tests/`).
+
 ## Use at your own risk
 
 This is experimental software in early development
@@ -21,9 +32,10 @@ This is experimental software in early development
 - 100% TypeScript and ESM
 - Zero-copy reading and writing
 - Works in the browser
-- All cryptography use either WebCrypto or reproducible WebAssembly ports of Rust implementations
+- Cryptography via WebCrypto / @noble (AES/RSA no longer require WASM in this fork)
 - Unsafe Tor protocol (with Ed25519, ntor, kdf-tor)
-- Meek (HTTP) transport (without domain-fronting)
+- Meek (HTTP) transport (without domain-fronting; CDN77 default URL)
+
 - Snowflake (WebRTC/WebSocket) transport (without domain-fronting)
 - Unsafe TLS using [Cadenas](https://github.com/hazae41/cadenas)
 - HTTP and WebSocket messaging using [Fleche](https://github.com/hazae41/fleche)

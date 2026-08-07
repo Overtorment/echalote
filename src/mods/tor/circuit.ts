@@ -1,4 +1,4 @@
-import { Aes128Ctr128BEKey, AesWasm } from "@hazae41/aes.wasm";
+import { Aes128Ctr128BEKey, AesWasm } from "libs/aes/index.js";
 import { Base64 } from "@hazae41/base64";
 import { Opaque } from "@hazae41/binary";
 import { Bitset } from "@hazae41/bitset";
