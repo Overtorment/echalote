@@ -8,7 +8,7 @@
   "homepage": "https://github.com/Overtorment/echalote",
   "repository": "github:Overtorment/echalote",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "main": "./dist/cjs/src/index.cjs",
   "module": "./dist/esm/src/index.mjs",

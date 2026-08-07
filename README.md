@@ -8,7 +8,7 @@ Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
 
 ## Requirements
 
-- **Node.js ≥ 20** (WebCrypto Ed25519, native `fetch`)
+- **Node.js ≥ 24** (Active LTS)
 - Or **Bun** (same APIs; tests use Bun)
 
 Published package is compiled JS under `dist/` (ESM + CJS + types). `npm install` / `bun install` from git/`file:` runs `prepare` → `npm run build`.

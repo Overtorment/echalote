@@ -29,7 +29,7 @@ CI: `.github/workflows/ci.yml` — four jobs:
 
 Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 
-**Engines:** Node `>=20`.
+**Engines:** Node `>=24` (Active LTS).
 
 ## Layout
 
