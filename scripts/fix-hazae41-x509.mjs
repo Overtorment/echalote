@@ -65,17 +65,26 @@ function patchPackageJson(pkgJsonPath) {
 }
 
 const candidates = [join(root, "node_modules/@hazae41/x509/package.json")];
-for (const name of readdirSync(join(root, "node_modules")).filter((n) =>
-  n.startsWith("@"),
-)) {
-  const scoped = join(root, "node_modules", name);
-  try {
-    for (const pkg of readdirSync(scoped)) {
-      const nested = join(scoped, pkg, "node_modules/@hazae41/x509/package.json");
-      if (existsSync(nested)) candidates.push(nested);
+// Also look one level up (Bun/npm often hoist deps next to the consumer).
+candidates.push(join(root, "../@hazae41/x509/package.json"));
+candidates.push(join(root, "../../@hazae41/x509/package.json"));
+
+const localModules = join(root, "node_modules");
+if (existsSync(localModules)) {
+  for (const name of readdirSync(localModules).filter((n) => n.startsWith("@"))) {
+    const scoped = join(localModules, name);
+    try {
+      for (const pkg of readdirSync(scoped)) {
+        const nested = join(
+          scoped,
+          pkg,
+          "node_modules/@hazae41/x509/package.json",
+        );
+        if (existsSync(nested)) candidates.push(nested);
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
   }
 }
 

@@ -1,0 +1,575 @@
+'use strict';
+
+var tslib_es6 = require('../../../../node_modules/tslib/tslib.es6.cjs');
+var asn1 = require('@hazae41/asn1');
+var base16 = require('@hazae41/base16');
+var base64 = require('@hazae41/base64');
+var bytes = require('@hazae41/bytes');
+var fleche = require('@hazae41/fleche');
+var index = require('../../../libs/rsa/index.cjs');
+var x509 = require('@hazae41/x509');
+
+exports.Consensus = void 0;
+(function (Consensus) {
+    let Authority;
+    (function (Authority) {
+        Authority.trusteds = new Set([
+            "0232AF901C31A04EE9848595AF9BB7620D4C5B2E",
+            "14C131DFC5C6F93646BE72FA1401C02A8DF2E8B4",
+            "23D15D965BC35114467363C165C4F724B64B4F66",
+            "27102BC123E7AF1D4741AE047E160C91ADC76B21",
+            "49015F787433103580E3B66A1707A00E60F2D15B",
+            "E8A9C45EDE6D711294FADF8E7951F4DE6CA56B58",
+            "ED03BB616EB2F60BEC80151114BB25CEF515B226",
+            "F533C81CEF0BC0267857C99B2F471ADF249FA232"
+        ]);
+    })(Authority = Consensus.Authority || (Consensus.Authority = {}));
+    async function fetchOrThrow(circuit, signal = new AbortController().signal) {
+        const stream = await circuit.openDirOrThrow({}, signal);
+        const response = await fleche.fetch(`http://localhost/tor/status-vote/current/consensus-microdesc.z`, { stream: stream.outer, signal });
+        const consensus = Consensus.parseOrThrow(await response.text());
+        if (await Consensus.verifyOrThrow(circuit, consensus, signal) !== true)
+            throw new Error(`Could not verify`);
+        return consensus;
+    }
+    Consensus.fetchOrThrow = fetchOrThrow;
+    function parseOrThrow(text) {
+        const lines = text.split("\n");
+        const consensus = {};
+        const authorities = [];
+        const microdescs = [];
+        const signatures = [];
+        for (const i = { x: 0 }; i.x < lines.length; i.x++) {
+            if (lines[i.x].startsWith("network-status-version ")) {
+                const [, version, type] = lines[i.x].split(" ");
+                consensus.version = Number(version);
+                consensus.type = type;
+                continue;
+            }
+            if (lines[i.x].startsWith("vote-status ")) {
+                const [, status] = lines[i.x].split(" ");
+                consensus.status = status;
+                continue;
+            }
+            if (lines[i.x].startsWith("consensus-method ")) {
+                const [, method] = lines[i.x].split(" ");
+                consensus.method = Number(method);
+                continue;
+            }
+            if (lines[i.x].startsWith("valid-after ")) {
+                const validAfter = lines[i.x].split(" ").slice(1).join(" ");
+                consensus.validAfter = new Date(validAfter);
+                continue;
+            }
+            if (lines[i.x].startsWith("fresh-until ")) {
+                const freshUntil = lines[i.x].split(" ").slice(1).join(" ");
+                consensus.freshUntil = new Date(freshUntil);
+                continue;
+            }
+            if (lines[i.x].startsWith("voting-delay ")) {
+                const [, first, second] = lines[i.x].split(" ");
+                consensus.votingDelay = [Number(first), Number(second)];
+                continue;
+            }
+            if (lines[i.x].startsWith("client-versions ")) {
+                const [, versions] = lines[i.x].split(" ");
+                consensus.clientVersions = versions.split(",");
+                continue;
+            }
+            if (lines[i.x].startsWith("server-versions ")) {
+                const [, versions] = lines[i.x].split(" ");
+                consensus.serverVersions = versions.split(",");
+                continue;
+            }
+            if (lines[i.x].startsWith("known-flags ")) {
+                const [, ...flags] = lines[i.x].split(" ");
+                consensus.knownFlags = flags;
+                continue;
+            }
+            if (lines[i.x].startsWith("recommended-client-protocols ")) {
+                const [, ...protocols] = lines[i.x].split(" ");
+                consensus.recommendedClientProtocols = Object.fromEntries(protocols.map(entry => entry.split("=")));
+                continue;
+            }
+            if (lines[i.x].startsWith("recommended-relay-protocols ")) {
+                const [, ...protocols] = lines[i.x].split(" ");
+                consensus.recommendedRelayProtocols = Object.fromEntries(protocols.map(entry => entry.split("=")));
+                continue;
+            }
+            if (lines[i.x].startsWith("required-client-protocols ")) {
+                const [, ...protocols] = lines[i.x].split(" ");
+                consensus.requiredClientProtocols = Object.fromEntries(protocols.map(entry => entry.split("=")));
+                continue;
+            }
+            if (lines[i.x].startsWith("required-relay-protocols ")) {
+                const [, ...protocols] = lines[i.x].split(" ");
+                consensus.requiredRelayProtocols = Object.fromEntries(protocols.map(entry => entry.split("=")));
+                continue;
+            }
+            if (lines[i.x].startsWith("params ")) {
+                const [, ...params] = lines[i.x].split(" ");
+                consensus.params = Object.fromEntries(params.map(entry => entry.split("=")));
+                continue;
+            }
+            if (lines[i.x].startsWith("shared-rand-previous-value ")) {
+                const [, reveals, random] = lines[i.x].split(" ");
+                consensus.sharedRandPreviousValue = { reveals: Number(reveals), random };
+                continue;
+            }
+            if (lines[i.x].startsWith("shared-rand-current-value ")) {
+                const [, reveals, random] = lines[i.x].split(" ");
+                consensus.sharedRandCurrentValue = { reveals: Number(reveals), random };
+                continue;
+            }
+            if (lines[i.x] === "directory-footer") {
+                for (i.x++; i.x < lines.length; i.x++) {
+                    if (lines[i.x].startsWith("bandwidth-weights ")) {
+                        const [, ...weights] = lines[i.x].split(" ");
+                        consensus.bandwidthWeights = Object.fromEntries(weights.map(entry => entry.split("=")));
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("directory-signature ")) {
+                        consensus.preimage ??= `${lines.slice(0, i.x).join("\n")}\ndirectory-signature `;
+                        const item = {};
+                        const [, algorithm, identity, signingKeyDigest] = lines[i.x].split(" ");
+                        item.algorithm = algorithm;
+                        item.identity = identity;
+                        item.signingKeyDigest = signingKeyDigest;
+                        i.x++;
+                        item.signature = readSignatureOrThrow(lines, i);
+                        if (item.algorithm == null)
+                            throw new Error("Missing algorithm");
+                        if (item.identity == null)
+                            throw new Error("Missing identity");
+                        if (item.signingKeyDigest == null)
+                            throw new Error("Missing signingKeyDigest");
+                        if (item.signature == null)
+                            throw new Error("Missing signature");
+                        const signature = item;
+                        signatures.push(signature);
+                        continue;
+                    }
+                    continue;
+                }
+                break;
+            }
+            if (lines[i.x].startsWith("dir-source ")) {
+                const item = {};
+                const [_, nickname, identity, hostname, ipaddress, dirport, orport] = lines[i.x].split(" ");
+                item.nickname = nickname;
+                item.identity = identity;
+                item.hostname = hostname;
+                item.ipaddress = ipaddress;
+                item.dirport = Number(dirport);
+                item.orport = Number(orport);
+                for (i.x++; i.x < lines.length; i.x++) {
+                    if (lines[i.x].startsWith("dir-source ")) {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x].startsWith("r ")) {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x] === "directory-footer") {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x].startsWith("contact ")) {
+                        const contact = lines[i.x].split(" ").slice(1).join(" ");
+                        item.contact = contact;
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("vote-digest ")) {
+                        const [_, digest] = lines[i.x].split(" ");
+                        item.digest = digest;
+                        continue;
+                    }
+                    continue;
+                }
+                if (item.nickname == null)
+                    throw new Error("Missing nickname");
+                if (item.identity == null)
+                    throw new Error("Missing identity");
+                if (item.hostname == null)
+                    throw new Error("Missing hostname");
+                if (item.ipaddress == null)
+                    throw new Error("Missing ipaddress");
+                if (item.dirport == null)
+                    throw new Error("Missing dirport");
+                if (item.orport == null)
+                    throw new Error("Missing orport");
+                if (item.contact == null)
+                    throw new Error("Missing contact");
+                if (item.digest == null)
+                    throw new Error("Missing digest");
+                const authority = item;
+                authorities.push(authority);
+                continue;
+            }
+            if (lines[i.x].startsWith("r ")) {
+                const item = {};
+                const [_, nickname, identity, date, hour, hostname, orport, dirport] = lines[i.x].split(" ");
+                item.nickname = nickname;
+                item.identity = identity;
+                item.date = date;
+                item.hour = hour;
+                item.hostname = hostname;
+                item.orport = Number(orport);
+                item.dirport = Number(dirport);
+                for (i.x++; i.x < lines.length; i.x++) {
+                    if (lines[i.x].startsWith("dir-source ")) {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x].startsWith("r ")) {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x] === "directory-footer") {
+                        i.x--;
+                        break;
+                    }
+                    if (lines[i.x].startsWith("a ")) {
+                        const [, ipv6] = lines[i.x].split(" ");
+                        item.ipv6 = ipv6;
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("m ")) {
+                        const [, digest] = lines[i.x].split(" ");
+                        item.microdesc = digest;
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("s ")) {
+                        const [, ...flags] = lines[i.x].split(" ");
+                        item.flags = flags;
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("v ")) {
+                        const version = lines[i.x].slice("v ".length);
+                        item.version = version;
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("pr ")) {
+                        const [, ...entries] = lines[i.x].split(" ");
+                        item.entries = Object.fromEntries(entries.map(entry => entry.split("=")));
+                        continue;
+                    }
+                    if (lines[i.x].startsWith("w ")) {
+                        const [, ...entries] = lines[i.x].split(" ");
+                        item.bandwidth = Object.fromEntries(entries.map(entry => entry.split("=")));
+                        continue;
+                    }
+                    continue;
+                }
+                if (item.nickname == null)
+                    throw new Error("Missing nickname");
+                if (item.identity == null)
+                    throw new Error("Missing identity");
+                if (item.date == null)
+                    throw new Error("Missing date");
+                if (item.hour == null)
+                    throw new Error("Missing hour");
+                if (item.hostname == null)
+                    throw new Error("Missing hostname");
+                if (item.orport == null)
+                    throw new Error("Missing orport");
+                if (item.dirport == null)
+                    throw new Error("Missing dirport");
+                if (item.microdesc == null)
+                    throw new Error("Missing microdesc");
+                if (item.flags == null)
+                    throw new Error("Missing flags");
+                if (item.version == null)
+                    throw new Error("Missing version");
+                if (item.entries == null)
+                    throw new Error("Missing entries");
+                if (item.bandwidth == null)
+                    throw new Error("Missing bandwidth");
+                microdescs.push(item);
+                continue;
+            }
+            continue;
+        }
+        consensus.authorities = authorities;
+        consensus.microdescs = microdescs;
+        consensus.signatures = signatures;
+        return consensus;
+    }
+    Consensus.parseOrThrow = parseOrThrow;
+    async function verifyOrThrow(circuit, consensus, signal = new AbortController().signal) {
+        let count = 0;
+        for (const it of consensus.signatures) {
+            if (it.algorithm === "sha256") {
+                const env_1 = { stack: [], error: void 0, hasError: false };
+                try {
+                    if (!Authority.trusteds.has(it.identity))
+                        continue;
+                    const certificate = await Certificate.fetchOrThrow(circuit, it.identity, signal);
+                    if (certificate == null)
+                        throw new Error(`Missing certificate for ${it.identity}`);
+                    const signed = bytes.Bytes.fromUtf8(consensus.preimage);
+                    const hashed = new Uint8Array(await crypto.subtle.digest("SHA-256", signed));
+                    const signingKey = tslib_es6.__addDisposableResource(env_1, base64.Base64.get().getOrThrow().decodePaddedOrThrow(certificate.signingKey), false);
+                    const algorithmAsn1 = asn1.ASN1.ObjectIdentifier.create(undefined, x509.OIDs.keys.rsaEncryption).toDER();
+                    const algorithmId = new x509.X509.AlgorithmIdentifier(algorithmAsn1, asn1.ASN1.Null.create().toDER());
+                    const subjectPublicKey = asn1.ASN1.BitString.create(undefined, 0, signingKey.bytes).toDER();
+                    const subjectPublicKeyInfo = new x509.X509.SubjectPublicKeyInfo(algorithmId, subjectPublicKey);
+                    const publicKey = x509.X509.writeToBytesOrThrow(subjectPublicKeyInfo);
+                    const signature = tslib_es6.__addDisposableResource(env_1, base64.Base64.get().getOrThrow().decodePaddedOrThrow(it.signature), false);
+                    const signatureM = tslib_es6.__addDisposableResource(env_1, new index.RsaWasm.Memory(signature.bytes), false);
+                    const hashedM = tslib_es6.__addDisposableResource(env_1, new index.RsaWasm.Memory(hashed), false);
+                    const publicKeyM = tslib_es6.__addDisposableResource(env_1, new index.RsaWasm.Memory(publicKey), false);
+                    const publicKeyX = tslib_es6.__addDisposableResource(env_1, index.RsaWasm.RsaPublicKey.from_public_key_der(publicKeyM), false);
+                    const verified = publicKeyX.verify_pkcs1v15_unprefixed(hashedM, signatureM);
+                    if (verified !== true)
+                        throw new Error(`Could not verify`);
+                    count++;
+                    continue;
+                }
+                catch (e_1) {
+                    env_1.error = e_1;
+                    env_1.hasError = true;
+                }
+                finally {
+                    tslib_es6.__disposeResources(env_1);
+                }
+            }
+            continue;
+        }
+        if (count < 3)
+            throw new Error(`Not enough signatures`);
+        return true;
+    }
+    Consensus.verifyOrThrow = verifyOrThrow;
+    let Certificate;
+    (function (Certificate) {
+        async function fetchAllOrThrow(circuit, signal = new AbortController().signal) {
+            const stream = await circuit.openDirOrThrow({}, signal);
+            const response = await fleche.fetch(`http://localhost/tor/keys/fp/all.z`, { stream: stream.outer, signal });
+            if (!response.ok)
+                throw new Error(`Could not fetch`);
+            const certificates = parseOrThrow(await response.text());
+            const verifieds = await Promise.all(certificates.map(verifyOrThrow));
+            if (verifieds.some(result => result !== true))
+                throw new Error(`Could not verify`);
+            return certificates;
+        }
+        Certificate.fetchAllOrThrow = fetchAllOrThrow;
+        async function fetchOrThrow(circuit, fingerprint, signal = new AbortController().signal) {
+            const stream = await circuit.openDirOrThrow(undefined, signal);
+            const response = await fleche.fetch(`http://localhost/tor/keys/fp/${fingerprint}.z`, { stream: stream.outer, signal });
+            if (!response.ok)
+                throw new Error(`Could not fetch`);
+            const [certificate] = parseOrThrow(await response.text());
+            if (certificate == null)
+                throw new Error(`Missing certificate`);
+            if (await verifyOrThrow(certificate) !== true)
+                throw new Error(`Could not verify`);
+            return certificate;
+        }
+        Certificate.fetchOrThrow = fetchOrThrow;
+        async function verifyOrThrow(cert) {
+            const env_2 = { stack: [], error: void 0, hasError: false };
+            try {
+                const identityKey = tslib_es6.__addDisposableResource(env_2, base64.Base64.get().getOrThrow().decodePaddedOrThrow(cert.identityKey), false);
+                const identity = new Uint8Array(await crypto.subtle.digest("SHA-1", identityKey.bytes));
+                const fingerprint = base16.Base16.get().getOrThrow().encodeOrThrow(identity);
+                if (fingerprint.toLowerCase() !== cert.fingerprint.toLowerCase())
+                    throw new Error(`Fingerprint mismatch`);
+                const signed = bytes.Bytes.fromUtf8(cert.preimage);
+                const hashed = new Uint8Array(await crypto.subtle.digest("SHA-1", signed));
+                const algorithmAsn1 = asn1.ASN1.ObjectIdentifier.create(undefined, x509.OIDs.keys.rsaEncryption).toDER();
+                const algorithmId = new x509.X509.AlgorithmIdentifier(algorithmAsn1, asn1.ASN1.Null.create().toDER());
+                const subjectPublicKey = asn1.ASN1.BitString.create(undefined, 0, identityKey.bytes).toDER();
+                const subjectPublicKeyInfo = new x509.X509.SubjectPublicKeyInfo(algorithmId, subjectPublicKey);
+                const publicKey = x509.X509.writeToBytesOrThrow(subjectPublicKeyInfo);
+                const signature = tslib_es6.__addDisposableResource(env_2, base64.Base64.get().getOrThrow().decodePaddedOrThrow(cert.signature), false);
+                const hashedM = tslib_es6.__addDisposableResource(env_2, new index.RsaWasm.Memory(hashed), false);
+                const publicKeyM = tslib_es6.__addDisposableResource(env_2, new index.RsaWasm.Memory(publicKey), false);
+                const signatureM = tslib_es6.__addDisposableResource(env_2, new index.RsaWasm.Memory(signature.bytes), false);
+                const publicKeyX = tslib_es6.__addDisposableResource(env_2, index.RsaWasm.RsaPublicKey.from_public_key_der(publicKeyM), false);
+                const verified = publicKeyX.verify_pkcs1v15_unprefixed(hashedM, signatureM);
+                if (verified !== true)
+                    throw new Error(`Could not verify`);
+                return true;
+            }
+            catch (e_2) {
+                env_2.error = e_2;
+                env_2.hasError = true;
+            }
+            finally {
+                tslib_es6.__disposeResources(env_2);
+            }
+        }
+        Certificate.verifyOrThrow = verifyOrThrow;
+        function parseOrThrow(text) {
+            const lines = text.split("\n");
+            const items = [];
+            for (const i = { x: 0 }; i.x < lines.length; i.x++) {
+                if (lines[i.x].startsWith("dir-key-certificate-version ")) {
+                    const start = i.x;
+                    const cert = {};
+                    const [, version] = lines[i.x].split(" ");
+                    cert.version = Number(version);
+                    for (i.x++; i.x < lines.length; i.x++) {
+                        if (lines[i.x].startsWith("dir-key-certificate-version ")) {
+                            i.x--;
+                            break;
+                        }
+                        if (lines[i.x].startsWith("fingerprint ")) {
+                            const [, fingerprint] = lines[i.x].split(" ");
+                            cert.fingerprint = fingerprint;
+                            continue;
+                        }
+                        if (lines[i.x].startsWith("dir-key-published ")) {
+                            const published = lines[i.x].split(" ").slice(1).join(" ");
+                            cert.published = new Date(published);
+                            continue;
+                        }
+                        if (lines[i.x].startsWith("dir-key-expires ")) {
+                            const expires = lines[i.x].split(" ").slice(1).join(" ");
+                            cert.expires = new Date(expires);
+                            continue;
+                        }
+                        if (lines[i.x] === "dir-identity-key") {
+                            i.x++;
+                            cert.identityKey = readRsaPublicKeyOrThrow(lines, i);
+                            continue;
+                        }
+                        if (lines[i.x] === "dir-signing-key") {
+                            i.x++;
+                            cert.signingKey = readRsaPublicKeyOrThrow(lines, i);
+                            continue;
+                        }
+                        if (lines[i.x] === "dir-key-crosscert") {
+                            i.x++;
+                            cert.crossCert = readIdSignatureOrThrow(lines, i);
+                            continue;
+                        }
+                        if (lines[i.x] === "dir-key-certification") {
+                            i.x++;
+                            cert.preimage = lines.slice(start, i.x).join("\n") + "\n";
+                            cert.signature = readSignatureOrThrow(lines, i);
+                            continue;
+                        }
+                        continue;
+                    }
+                    if (cert.version == null)
+                        throw new Error("Missing version");
+                    if (cert.fingerprint == null)
+                        throw new Error("Missing fingerprint");
+                    if (cert.published == null)
+                        throw new Error("Missing published");
+                    if (cert.expires == null)
+                        throw new Error("Missing expires");
+                    if (cert.identityKey == null)
+                        throw new Error("Missing identityKey");
+                    if (cert.signingKey == null)
+                        throw new Error("Missing signingKey");
+                    if (cert.crossCert == null)
+                        throw new Error("Missing crossCert");
+                    if (cert.signature == null)
+                        throw new Error("Missing certification");
+                    items.push(cert);
+                    continue;
+                }
+                continue;
+            }
+            return items;
+        }
+        Certificate.parseOrThrow = parseOrThrow;
+    })(Certificate = Consensus.Certificate || (Consensus.Certificate = {}));
+    (function (Microdesc) {
+        async function fetchOrThrow(circuit, ref, signal = new AbortController().signal) {
+            const stream = await circuit.openDirOrThrow({}, signal);
+            const response = await fleche.fetch(`http://localhost/tor/micro/d/${ref.microdesc}.z`, { stream: stream.outer, signal });
+            if (!response.ok)
+                throw new Error(`Could not fetch ${response.status} ${response.statusText}: ${await response.text()}`);
+            const buffer = await response.arrayBuffer();
+            const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", buffer));
+            const digest64 = base64.Base64.get().getOrThrow().encodeUnpaddedOrThrow(digest);
+            if (digest64 !== ref.microdesc)
+                throw new Error(`Digest mismatch`);
+            const text = bytes.Bytes.toUtf8(new Uint8Array(buffer));
+            const [data] = parseOrThrow(text);
+            if (data == null)
+                throw new Error(`Empty microdescriptor`);
+            return { ...ref, ...data };
+        }
+        Microdesc.fetchOrThrow = fetchOrThrow;
+        function parseOrThrow(text) {
+            const lines = text.split("\n");
+            const items = [];
+            for (const i = { x: 0 }; i.x < lines.length; i.x++) {
+                if (lines[i.x] === "onion-key") {
+                    i.x++;
+                    const item = {};
+                    item.onionKey = readRsaPublicKeyOrThrow(lines, i);
+                    for (i.x++; i.x < lines.length; i.x++) {
+                        if (lines[i.x] === "onion-key") {
+                            i.x--;
+                            break;
+                        }
+                        if (lines[i.x].startsWith("ntor-onion-key ")) {
+                            const [, ntorOnionKey] = lines[i.x].split(" ");
+                            item.ntorOnionKey = ntorOnionKey;
+                            continue;
+                        }
+                        if (lines[i.x].startsWith("id ed25519 ")) {
+                            const [, , idEd25519] = lines[i.x].split(" ");
+                            item.idEd25519 = idEd25519;
+                            continue;
+                        }
+                        continue;
+                    }
+                    if (item.onionKey == null)
+                        throw new Error("Missing onion-key");
+                    if (item.ntorOnionKey == null)
+                        throw new Error("Missing ntor-onion-key");
+                    if (item.idEd25519 == null)
+                        throw new Error("Missing id ed25519");
+                    items.push(item);
+                    continue;
+                }
+                continue;
+            }
+            return items;
+        }
+        Microdesc.parseOrThrow = parseOrThrow;
+    })(Consensus.Microdesc || (Consensus.Microdesc = {}));
+})(exports.Consensus || (exports.Consensus = {}));
+function readRsaPublicKeyOrThrow(lines, i) {
+    if (lines[i.x] !== "-----BEGIN RSA PUBLIC KEY-----")
+        throw new Error("Missing BEGIN RSA PUBLIC KEY");
+    let text = "";
+    for (i.x++; i.x < lines.length; i.x++) {
+        if (lines[i.x] === "-----END RSA PUBLIC KEY-----")
+            return text;
+        text += lines[i.x];
+    }
+    throw new Error("Missing END RSA PUBLIC KEY");
+}
+function readSignatureOrThrow(lines, i) {
+    if (lines[i.x] !== "-----BEGIN SIGNATURE-----")
+        throw new Error("Missing BEGIN SIGNATURE");
+    let text = "";
+    for (i.x++; i.x < lines.length; i.x++) {
+        if (lines[i.x] === "-----END SIGNATURE-----")
+            return text;
+        text += lines[i.x];
+    }
+    throw new Error("Missing END SIGNATURE");
+}
+function readIdSignatureOrThrow(lines, i) {
+    if (lines[i.x] !== "-----BEGIN ID SIGNATURE-----")
+        throw new Error("Missing BEGIN ID SIGNATURE");
+    let text = "";
+    for (i.x++; i.x < lines.length; i.x++) {
+        if (lines[i.x] === "-----END ID SIGNATURE-----")
+            return text;
+        text += lines[i.x];
+    }
+    throw new Error("Missing END ID SIGNATURE");
+}
+//# sourceMappingURL=consensus.cjs.map

@@ -20,8 +20,8 @@
     "./dist/types"
   ],
   "scripts": {
-    "build": "rimraf dist && rollup -c",
-    "prepare": "npm run build",
+    "build": "rimraf dist && NODE_OPTIONS=--max-old-space-size=8192 rollup -c",
+    "prepare": "node -e \"require('fs').accessSync('dist/esm/src/index.mjs')\" || npm run build",
     "smoke:node": "node scripts/smoke-node.mjs",
     "test:unit": "bun test tests/unit",
     "test:unit:node": "node --experimental-vm-modules node_modules/jest/bin/jest.js tests/unit",

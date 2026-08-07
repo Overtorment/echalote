@@ -41,7 +41,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 | `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` |
 | `src/mods/crypto/` | Noble/WebCrypto adapters |
 | `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
-| `dist/` | Published Node/npm artifacts (gitignored; built on install/publish) |
+| `dist/` | Shipped in git for `github:` installs (Bun won't run prepare build tools). Rebuild with `npm run build` after source changes. |
 | `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
 | `tests/integration/` | Live meek → exit → HTTPS check |
 | `scripts/fix-hazae41-x509.mjs` | `postinstall` (must stay **node**-runnable) |
