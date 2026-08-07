@@ -3,9 +3,10 @@
  * across 1.2.x releases. Detect which files exist and rewrite exports.
  */
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = join(import.meta.dirname, "..");
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function resolveLayout(pkgDir) {
   const flatEsm = join(pkgDir, "dist/esm/index.mjs");

@@ -7,17 +7,24 @@
   "description": "Zero-copy Tor protocol for the web (Overtorment fork: CDN77 meek, pinned deps, Noble crypto, no aes/rsa WASM)",
   "homepage": "https://github.com/Overtorment/echalote",
   "repository": "github:Overtorment/echalote",
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
-  "types": "./src/index.ts",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/cjs/src/index.cjs",
+  "module": "./dist/esm/src/index.mjs",
+  "types": "./dist/types/index.d.ts",
   "sideEffects": false,
   "files": [
-    "./src"
+    "./dist/esm",
+    "./dist/cjs",
+    "./dist/types"
   ],
   "scripts": {
+    "build": "rimraf dist && rollup -c",
+    "prepare": "npm run build",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
-    "postinstall": "bun scripts/fix-hazae41-x509.mjs"
+    "postinstall": "node scripts/fix-hazae41-x509.mjs"
   },
   "peerDependencies": {
     "@hazae41/base16": "1.0.18",
@@ -61,14 +68,20 @@
   "devDependencies": {
     "@hazae41/deimos": "^1.0.6",
     "@hazae41/phobos": "^1.0.10",
+    "@hazae41/rimraf": "^1.0.1",
+    "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^22.5.3",
+    "rollup": "^4.21.2",
+    "rollup-plugin-dts": "^6.1.1",
+    "rollup-plugin-node-externals": "^7.1.3",
+    "tslib": "^2.7.0",
     "typescript": "^5.5.4"
   },
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "import": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/src/index.mjs",
+      "require": "./dist/cjs/src/index.cjs"
     }
   },
   "keywords": [

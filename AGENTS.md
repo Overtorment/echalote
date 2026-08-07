@@ -4,23 +4,24 @@ Guidance for AI agents and humans working in this repo. Consumer-facing docs liv
 
 ## What this is
 
-Bun-first fork of [hazae41/echalote](https://github.com/hazae41/echalote): Tor client protocol in TypeScript. Package exports point at **`src/`** (no Rollup/`dist` build).
+Fork of [hazae41/echalote](https://github.com/hazae41/echalote) for **Node.js (npm) and Bun**. Package ships compiled **`dist/`** (ESM + CJS + types) via Rollup. Source stays in `src/` with path aliases (`mods/*`, `libs/*`).
 
-Primary happy path for consumers:
+Primary happy path:
 
 `createMeekStream` → `TorClientDuplex` → `buildExitCircuit` → `circuit.openOrThrow(host, port)`
 
 ## Commands
 
 ```bash
-bun install
-bun run test:unit          # tests/unit — offline, required
-bun run test:integration   # tests/integration — live Tor, needs network
+npm install                 # prepare → npm run build; postinstall → node x509 fix
+npm run build               # rimraf dist && rollup -c
+bun run test:unit           # tests/unit (Bun test runner)
+bun run test:integration    # live Tor (network)
 ```
 
-CI: `.github/workflows/ci.yml` — jobs `unit` and `integration`.
+CI: `.github/workflows/ci.yml` — jobs `unit` and `integration` (`bun install` runs prepare/build).
 
-Do **not** add `build` / `prepare` / Rollup back unless explicitly requested.
+**Engines:** Node `>=20`.
 
 ## Layout
 
@@ -32,33 +33,32 @@ Do **not** add `build` / `prepare` / Rollup back unless explicitly requested.
 | `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` |
 | `src/mods/crypto/` | Noble/WebCrypto adapters |
 | `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
+| `dist/` | Published Node/npm artifacts (gitignored; built on install/publish) |
 | `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
 | `tests/integration/` | Live meek → exit → HTTPS check |
-| `scripts/fix-hazae41-x509.mjs` | `postinstall` export-path fix |
+| `scripts/fix-hazae41-x509.mjs` | `postinstall` (must stay **node**-runnable) |
+| `rollup.config.js` | Library-only build (no test/bench bundles) |
 
 ## Hard constraints
 
 1. **Meek URL** — Never restore `meek.azureedge.net`. Use CDN77 (`DEFAULT_MEEK_URL`).
 2. **Directory over meek** — Full consensus via Tor/meek truncates (~3.5MB). Use clearnet `fetchMicrodescConsensus` / `fetchMicrodesc`, then extend on Tor.
-3. **Hazae41 pins** — Keep cursor **1.x**, mutex **2.1.x**, asn1 **&lt; 1.3.32**, binary **1.3.5**, smux/kcp **1.1.3**. Contracts are enforced in `tests/unit/deps-contracts.test.ts`. Use `overrides` when adding deps.
-4. **`@hazae41/bytes` `Uint8Array`** — Types may list it; runtime ESM does **not** export a value. Always `import type { Uint8Array }` (or `type` in a mixed import). Never value-import `Uint8Array` from that package.
-5. **AES-CTR** — Must keep mid-block keystream offset (Tor RELAY payloads are 509 bytes). Vectors in `tests/unit/vectors/aes-ctr-wasm.json`. Do not re-add `@hazae41/aes.wasm` / `rsa.wasm` as runtime deps; fixtures only.
-6. **X25519** — Use Noble (`initBundledCrypto`). Bun native WebCrypto rejects many valid ntor keys.
-7. **No Lefthook in `~`** — This machine’s home git repo must not get Lefthook; do not install hooks there.
+3. **Hazae41 pins** — Keep cursor **1.x**, mutex **2.1.x**, asn1 **&lt; 1.3.32**, binary **1.3.5**, smux/kcp **1.1.3**. Contracts in `tests/unit/deps-contracts.test.ts`. Use `overrides`.
+4. **`@hazae41/bytes` `Uint8Array`** — Runtime ESM does **not** export a value. Always `import type { Uint8Array }`.
+5. **AES-CTR** — Mid-block keystream offset required (509-byte RELAY payloads). Vectors in `tests/unit/vectors/aes-ctr-wasm.json`. No runtime aes/rsa WASM.
+6. **X25519** — Noble via `initBundledCrypto` (native WebCrypto often rejects ntor keys).
+7. **Node/npm first for the package surface** — `postinstall`/`prepare`/`build` must work with Node + npm. Do not make lifecycle scripts Bun-only. Tests may keep using Bun.
+8. **No Lefthook in `~`** — Do not install Lefthook hooks in the home git repo.
 
 ## When changing crypto or circuits
 
-- Prefer characterization / differential tests before swaps.
-- AES/RSA: update or regenerate vectors under `tests/unit/vectors/` if behavior intentionally changes; prove against known good outputs.
-- After circuit/directory changes, run `bun run test:integration` (or rely on CI).
-- Keep `buildExitCircuit` as the shared high-level API; do not duplicate that loop in consumers when this package can own it.
+- Prefer characterization tests before swaps; keep wasm vector fixtures.
+- After circuit/directory changes, run `bun run test:integration` (or CI).
+- Keep `buildExitCircuit` as the shared high-level API.
+- After entrypoint or path-alias changes, run `npm run build` and verify `node` can `import` / `require` from `dist/`.
 
 ## Style
 
-- Match existing hazae41-ish TypeScript patterns in `src/` (OrThrow, duplex pipes, minimal deps).
-- Do not expand scope into onion-service (HS) client unless asked.
+- Match existing TypeScript patterns in `src/` (OrThrow, duplex pipes).
+- Do not expand into onion-service (HS) client unless asked.
 - Do not commit secrets. Do not force-push `master`.
-
-## Upstream vs fork
-
-Fork goals: reliable Bun + meek + clearnet-dir circuits for apps like helix3. Snowflake and in-Tor `Consensus.fetchOrThrow` remain but are not the recommended path over meek.

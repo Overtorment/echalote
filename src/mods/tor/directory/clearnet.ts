@@ -41,8 +41,9 @@ function maybeInflate(buf: Buffer): Buffer {
 
 async function fetchBytes(url: string, signal: AbortSignal): Promise<Buffer | null> {
   try {
-    // Bun supports `decompress`; DOM RequestInit typings do not.
-    const res = await fetch(url, { signal, decompress: false } as RequestInit)
+    // Plain fetch for Node + Bun. Tor `.z` bodies are often raw zlib without
+    // Content-Encoding; maybeInflate() handles that after the read.
+    const res = await fetch(url, { signal })
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     return buf.length > 0 ? buf : null

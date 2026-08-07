@@ -1,29 +1,36 @@
 # @hazae41/echalote (Overtorment fork)
 
-Zero-copy Tor client protocol in TypeScript. This fork is maintained for **Bun** consumers (e.g. helix3): working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
+Zero-copy Tor client protocol in TypeScript. This fork targets **Node.js (npm) and Bun**: working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
 
 Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
 
 > **Experimental.** Treat as unsafe for high-threat use. APIs can change.
 
+## Requirements
+
+- **Node.js ≥ 20** (WebCrypto Ed25519, native `fetch`)
+- Or **Bun** (same APIs; tests use Bun)
+
+Published package is compiled JS under `dist/` (ESM + CJS + types). `npm install` / `bun install` from git/`file:` runs `prepare` → `npm run build`.
+
 ## Install
 
-Requires [Bun](https://bun.sh) (ships TypeScript source; no separate build step).
-
 ```bash
+npm install github:Overtorment/echalote
+# or
 bun add github:Overtorment/echalote
-# or, from a local checkout:
-bun add file:../echalote
+# local checkout:
+npm install file:../echalote
 ```
 
 Peer crypto packages (versions are pinned — do not upgrade casually):
 
 ```bash
-bun add @hazae41/base16@1.0.18 @hazae41/base64@1.0.15 \
+npm install @hazae41/base16@1.0.18 @hazae41/base64@1.0.15 \
   @hazae41/ed25519@2.1.21 @hazae41/sha1@1.1.14 @hazae41/x25519@2.2.9
 ```
 
-`postinstall` patches `@hazae41/x509` export paths when needed.
+`postinstall` runs `node scripts/fix-hazae41-x509.mjs` to patch `@hazae41/x509` export paths when needed.
 
 ## Quick start — exit stream over meek
 
@@ -56,7 +63,7 @@ tor.inner.readable.pipeTo(meek.duplex.outer.writable).catch(() => {})
 await tor.waitOrThrow(signal)
 
 // 2) 3-hop exit circuit (clearnet directory + Tor CREATE/EXTEND)
-using circuit = await buildExitCircuit(tor, signal, {
+const circuit = await buildExitCircuit(tor, signal, {
   attempts: 3,
   extendTimeoutMs: 15_000,
 })
@@ -91,8 +98,6 @@ await circuit.close()
 tor.close()
 ```
 
-Live smoke test of this flow: `bun run test:integration`.
-
 ## API overview
 
 | Export | Role |
@@ -123,7 +128,7 @@ Fetching the full ~3.5MB microdesc consensus **through meek** often truncates. T
 
 ### Lower-level / legacy
 
-You can still `createOrThrow` + `extendOrThrow` yourself, or use in-Tor `Consensus.fetchOrThrow` / `Consensus.Microdesc.fetchOrThrow` (directory over the circuit). Prefer `buildExitCircuit` for reliability over meek.
+You can still `createOrThrow` + `extendOrThrow` yourself, or use in-Tor `Consensus.fetchOrThrow` / `Consensus.Microdesc.fetchOrThrow`. Prefer `buildExitCircuit` for reliability over meek.
 
 Snowflake (`createWebSocketSnowflakeStream`) remains available; meek + `buildExitCircuit` is the supported happy path here.
 
@@ -132,18 +137,19 @@ Snowflake (`createWebSocketSnowflakeStream`) remains available; meek + `buildExi
 | Algorithm | Implementation |
 |-----------|----------------|
 | Ed25519 | WebCrypto via `@hazae41/ed25519` |
-| X25519 / SHA-1 | `@noble` (Bun native X25519 rejects many ntor keys) |
+| X25519 / SHA-1 | `@noble` (via `@hazae41/x25519` / `@hazae41/sha1` adapters) |
 | AES-128-CTR (relay cells) | `@noble/ciphers` (`src/libs/aes`) |
-| RSA PKCS#1 v1.5 unprefixed verify | BigInt + Node SPKI (`src/libs/rsa`) |
+| RSA PKCS#1 v1.5 unprefixed verify | BigInt + Node `crypto` SPKI (`src/libs/rsa`) |
 
 No `@hazae41/aes.wasm` / `@hazae41/rsa.wasm`.
 
 ## Develop
 
 ```bash
-bun install
-bun run test:unit          # offline
-bun run test:integration   # needs network (meek, DAs, Tor exit)
+npm install          # also runs prepare → build
+npm run build        # rollup → dist/esm, dist/cjs, dist/types
+bun run test:unit    # offline unit tests (Bun test runner)
+bun run test:integration
 ```
 
 Layout: `tests/unit/`, `tests/integration/`. CI runs both jobs on PRs.
