@@ -41,7 +41,8 @@ function maybeInflate(buf: Buffer): Buffer {
 
 async function fetchBytes(url: string, signal: AbortSignal): Promise<Buffer | null> {
   try {
-    const res = await fetch(url, { decompress: false, signal })
+    // Bun supports `decompress`; DOM RequestInit typings do not.
+    const res = await fetch(url, { signal, decompress: false } as RequestInit)
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     return buf.length > 0 ? buf : null
