@@ -17,7 +17,6 @@
     "./dist/types"
   ],
   "scripts": {
-    "macro": "saumon build -r ./src",
     "build": "rimraf dist && rollup -c",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
@@ -70,7 +69,6 @@
     "@hazae41/deimos": "^1.0.6",
     "@hazae41/phobos": "^1.0.10",
     "@hazae41/rimraf": "^1.0.1",
-    "@hazae41/saumon": "^0.2.14",
     "@rollup/plugin-inject": "^5.0.5",
     "@rollup/plugin-typescript": "^11.1.6",
     "@types/node": "^22.5.3",
