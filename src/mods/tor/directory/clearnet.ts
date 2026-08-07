@@ -8,17 +8,25 @@ import { sha256 } from "@noble/hashes/sha2.js"
 import { inflateSync } from "node:zlib"
 import { Consensus } from "../consensus/consensus.js"
 
-export const CONSENSUS_MIRRORS = [
-  "http://193.23.244.244:80/tor/status-vote/current/consensus-microdesc", // dannenberg
-  "http://171.25.193.9:443/tor/status-vote/current/consensus-microdesc", // maatuska
-  "http://199.58.81.140:80/tor/status-vote/current/consensus-microdesc", // longclaw
+/**
+ * v3 directory authorities (dirport), from tor `auth_dirs.inc`.
+ * Serge (bridge authority) omitted — not a consensus voter for clients.
+ */
+export const AUTHORITY_HOSTS = [
+  "128.31.0.39:9231", // moria1
+  "217.196.147.77:80", // tor26
+  "45.66.35.11:80", // dizum
+  "131.188.40.189:80", // gabelmoo
+  "193.23.244.244:80", // dannenberg
+  "171.25.193.9:443", // maatuska
+  "199.58.81.140:80", // longclaw
+  "204.13.164.118:80", // bastet
+  "216.218.219.41:80", // faravahar
 ] as const
 
-export const AUTHORITY_HOSTS = [
-  "193.23.244.244:80",
-  "171.25.193.9:443",
-  "199.58.81.140:80",
-] as const
+export const CONSENSUS_MIRRORS = AUTHORITY_HOSTS.map(
+  (host) => `http://${host}/tor/status-vote/current/consensus-microdesc`,
+)
 
 let cached: { at: number; consensus: Consensus } | null = null
 const CACHE_MS = 30 * 60 * 1000
