@@ -19,7 +19,11 @@ bun run test:unit           # tests/unit (Bun test runner)
 bun run test:integration    # live Tor (network)
 ```
 
-CI: `.github/workflows/ci.yml` — jobs `unit` and `integration` (`bun install` runs prepare/build).
+CI: `.github/workflows/ci.yml` — four jobs:
+- `unit-bun` / `integration-bun` — `bun install --frozen-lockfile`
+- `unit-npm` / `integration-npm` — `npm ci` + `node scripts/smoke-node.mjs`, then Bun only as the test runner
+
+Keep `package-lock.json` in sync when changing deps (`npm install`).
 
 **Engines:** Node `>=20`.
 

@@ -22,6 +22,7 @@
   "scripts": {
     "build": "rimraf dist && rollup -c",
     "prepare": "npm run build",
+    "smoke:node": "node scripts/smoke-node.mjs",
     "test:unit": "bun test tests/unit",
     "test:integration": "bun test tests/integration",
     "postinstall": "node scripts/fix-hazae41-x509.mjs"

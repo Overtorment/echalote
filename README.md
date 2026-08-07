@@ -152,7 +152,7 @@ bun run test:unit    # offline unit tests (Bun test runner)
 bun run test:integration
 ```
 
-Layout: `tests/unit/`, `tests/integration/`. CI runs both jobs on PRs.
+Layout: `tests/unit/`, `tests/integration/`. CI runs unit + integration for both **Bun** and **npm/Node** (npm jobs also smoke-import `dist` under Node).
 
 ## Privacy / threat model (short)
 
