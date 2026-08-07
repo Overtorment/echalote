@@ -1,4 +1,4 @@
-name: CI
+name: integration
 
 on:
   pull_request:
@@ -9,10 +9,10 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test (Bun)
+  live:
+    name: Tor exit HTTP
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,12 +22,11 @@ jobs:
         with:
           bun-version: latest
 
-      # Skip prepare (full rollup build); tests import from src via Bun.
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Fix hazae41/x509 package exports
         run: bun scripts/fix-hazae41-x509.mjs
 
-      - name: Run tests
-        run: bun test tests
+      - name: Run live integration test
+        run: bun test tests/integration

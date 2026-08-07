@@ -19,7 +19,8 @@
   "scripts": {
     "macro": "saumon build -r ./src",
     "build": "rimraf dist && rollup -c",
-    "test": "bun test tests",
+    "test": "bun test tests/*.test.ts",
+    "test:integration": "bun test tests/integration",
     "test:legacy": "node ./dist/test/index.test.mjs",
     "bench": "node ./dist/bench/index.bench.mjs",
     "fallbacks": "cd ./tools/fallbacks && deno run -A ./parser.ts && deno fmt ./fallbacks.json",

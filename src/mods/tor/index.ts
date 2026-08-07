@@ -6,6 +6,7 @@ export * from "./circuit.js";
 export * from "./client.js";
 export * from "./consensus/index.js";
 export * from "./constants.js";
+export * from "./directory/index.js";
 export * from "./errors.js";
 export * from "./state.js";
 export * from "./stream.js";

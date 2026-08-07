@@ -1,7 +1,7 @@
 import { Aes128Ctr128BEKey, AesWasm } from "libs/aes/index.js";
 import { Opaque, Readable, Writable } from "@hazae41/binary";
 import { Bitset } from "@hazae41/bitset";
-import { Bytes, Uint8Array } from "@hazae41/bytes";
+import { Bytes, type Uint8Array } from "@hazae41/bytes";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import { HalfDuplex } from "@hazae41/cascade";
 import { Cursor } from "@hazae41/cursor";
