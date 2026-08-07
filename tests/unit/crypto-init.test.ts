@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { Ed25519 } from "@hazae41/ed25519";
 import { Sha1 } from "@hazae41/sha1";
 import { X25519 } from "@hazae41/x25519";
-import { initBundledCrypto } from "../src/mods/crypto/init.ts";
+import { initBundledCrypto } from "../../src/mods/crypto/init.ts";
 
 describe("initBundledCrypto", () => {
   test("installs Ed25519, X25519, and Sha1 adapters", async () => {

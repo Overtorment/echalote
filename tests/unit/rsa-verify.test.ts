@@ -1,11 +1,11 @@
 /**
  * RSA PKCS#1 v1.5 unprefixed verify — used for Tor cross-certs / consensus.
- * Vectors captured from @hazae41/rsa.wasm@1.0.14 (tests/vectors/rsa-pkcs1v15-wasm.json).
+ * Vectors captured from @hazae41/rsa.wasm@1.0.14 (tests/unit/vectors/rsa-pkcs1v15-wasm.json).
  */
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { Memory, RsaPublicKey, RsaWasm } from "../src/libs/rsa/index.ts";
+import { Memory, RsaPublicKey, RsaWasm } from "../../src/libs/rsa/index.ts";
 
 const vectors = JSON.parse(
   readFileSync(join(import.meta.dirname, "vectors/rsa-pkcs1v15-wasm.json"), "utf8"),

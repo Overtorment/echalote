@@ -3,7 +3,7 @@
  * directory helpers helix3 relies on (clearnet fetch + parseOrThrow).
  */
 import { describe, expect, test } from "bun:test";
-import { Consensus } from "../src/mods/tor/consensus/consensus.ts";
+import { Consensus } from "../../src/mods/tor/consensus/consensus.ts";
 
 const microdescBody = `onion-key
 -----BEGIN RSA PUBLIC KEY-----

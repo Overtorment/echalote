@@ -8,7 +8,7 @@ import { Cursor } from "@hazae41/cursor";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const root = join(import.meta.dirname, "..");
+const root = join(import.meta.dirname, "../..");
 
 function pkgVersion(name: string): string {
   const pkg = JSON.parse(

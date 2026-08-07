@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   DEFAULT_MEEK_URL,
   createMeekStream,
-} from "../src/mods/meek/meek.ts";
+} from "../../src/mods/meek/meek.ts";
 
 describe("createMeekStream (characterization)", () => {
   test("returns a BatchedFetchStream with the given URL and session header", async () => {

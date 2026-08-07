@@ -17,7 +17,7 @@ Fork of [`hazae41/echalote`](https://github.com/hazae41/echalote) with Bun/helix
 - `initBundledCrypto()` — Ed25519 (WebCrypto) + X25519/SHA-1 (@noble)
 - AES-128-CTR + RSA PKCS1v15 unprefixed verify without WASM (`@noble/ciphers` + BigInt)
 
-Tests: `bun test` (see `tests/`).
+Tests: `bun test` (unit) / `bun run test:integration` (live Tor).
 
 ## Use at your own risk
 

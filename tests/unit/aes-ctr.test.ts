@@ -1,6 +1,6 @@
 /**
  * AES-128-CTR vectors captured from @hazae41/aes.wasm@1.0.3
- * (see tests/vectors/aes-ctr-wasm.json). Includes mid-block continuity
+ * (see tests/unit/vectors/aes-ctr-wasm.json). Includes mid-block continuity
  * required for Tor RELAY payloads (509 bytes).
  */
 import { describe, expect, test } from "bun:test";
@@ -10,7 +10,7 @@ import {
   Aes128Ctr128BEKey,
   AesWasm,
   Memory,
-} from "../src/libs/aes/index.ts";
+} from "../../src/libs/aes/index.ts";
 
 const vectors = JSON.parse(
   readFileSync(join(import.meta.dirname, "vectors/aes-ctr-wasm.json"), "utf8"),
