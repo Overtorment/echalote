@@ -4,7 +4,7 @@
   "version": "0.5.0",
   "author": "hazae41",
   "license": "MIT",
-  "description": "Zero-copy Tor protocol for the web (Overtorment fork: CDN77 meek, pinned deps, Noble crypto, no aes/rsa WASM)",
+  "description": "Zero-copy Tor protocol for Node.js and Bun (Overtorment fork: CDN77 meek, pinned deps, Noble crypto, no aes/rsa WASM)",
   "homepage": "https://github.com/Overtorment/echalote",
   "repository": "github:Overtorment/echalote",
   "engines": {
@@ -69,8 +69,6 @@
     "@hazae41/x509": "1.2.10"
   },
   "devDependencies": {
-    "@hazae41/deimos": "^1.0.6",
-    "@hazae41/phobos": "^1.0.10",
     "@hazae41/rimraf": "^1.0.1",
     "@jest/globals": "^29.7.0",
     "@rollup/plugin-typescript": "^11.1.6",
@@ -95,24 +93,16 @@
     "tor",
     "onion",
     "protocol",
-    "browser",
-    "buffer",
+    "nodejs",
+    "bun",
+    "meek",
     "stream",
-    "streaming",
     "http",
     "https",
     "privacy",
     "tls",
-    "packets",
     "binary",
-    "encoding",
-    "decoding",
-    "compression",
     "cryptography",
-    "crypto",
-    "typescript",
-    "esmodules",
-    "tested",
-    "unit-tested"
+    "typescript"
   ]
 }

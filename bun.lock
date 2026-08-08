@@ -30,8 +30,6 @@
         "@noble/hashes": "1.8.0",
       },
       "devDependencies": {
-        "@hazae41/deimos": "^1.0.6",
-        "@hazae41/phobos": "^1.0.10",
         "@hazae41/rimraf": "^1.0.1",
         "@jest/globals": "^29.7.0",
         "@rollup/plugin-typescript": "^11.1.6",
@@ -156,8 +154,6 @@
 
     "@hazae41/cursor": ["@hazae41/cursor@1.2.4", "", {}, "sha512-/pE3kOcZnPtLdw6MTv3ALEcuUV3Ab3lWNAafGQSMAzN7vUIJJUIa3mReScwsCLNnfYWy34Y46RIuRb/2kOnEcg=="],
 
-    "@hazae41/deimos": ["@hazae41/deimos@1.0.6", "", {}, "sha512-WFPqGe3hVKoUxXSDK+eJpKEpjTBZYfrvBCNlpUAjSyDB/5GrsjcVpgX37QDXZvtJA+Y8fZz1VHxuWGh+I46cIw=="],
-
     "@hazae41/disposer": ["@hazae41/disposer@2.0.20", "", {}, "sha512-O+/vlXgyJtd9yGEtkjJ2GszqiEhCDdusaPhnUMwjyrY1En5X2Jd3CTHahJxdsrfBVuXuULy3xcaC67qse/b86g=="],
 
     "@hazae41/ed25519": ["@hazae41/ed25519@2.1.21", "", { "dependencies": { "@hazae41/box": "^2.0.1", "@hazae41/option": "^1.1.3", "@hazae41/result": "^1.3.1" }, "peerDependencies": { "@hazae41/base64url": "^1.0.17" } }, "sha512-H9Tv+aLkhohIVnV5yYJCUIrtfDYHy9uyWGD51fwR4CQpecr1AkYpWtPUbZ9TaKWh/we5/1dOZgyX9mCoUelhaA=="],
@@ -173,8 +169,6 @@
     "@hazae41/mutex": ["@hazae41/mutex@2.1.0", "", { "dependencies": { "@hazae41/future": "^1.0.3" } }, "sha512-69PEhdpLNuuOshb14pvK2gmOAvtJApz2vIzEgRtvVNffeGrUxXO2GyPKXqjjZ80Bvy4WA9Ov0BDIdeeqOyqwMQ=="],
 
     "@hazae41/option": ["@hazae41/option@1.1.4", "", { "dependencies": { "@hazae41/result": "^1.3.0" } }, "sha512-ZGAVkOJJw2YIeihG8PaWs4R3KDloCgWGNDPqbATvT3kTtoyU+dJmya/UCM2P+ZwCfWYpE7nGiYJbBTlpp929Qg=="],
-
-    "@hazae41/phobos": ["@hazae41/phobos@1.0.10", "", {}, "sha512-ZCZx2YXnRAmMxQhBSg1/GW3wll8UVXGJm8ADWaGk9sJRnXE0zISAHz1mRZIHXHAq+MUBOQF7d6AeCAckc2xYlQ=="],
 
     "@hazae41/plume": ["@hazae41/plume@3.0.5", "", { "dependencies": { "@hazae41/disposer": "^2.0.20", "@hazae41/future": "^1.0.3", "@hazae41/signals": "^1.0.2" }, "peerDependencies": { "@hazae41/option": "^1.1.4" } }, "sha512-Kx6dP09Fj/34RTLHXJ3nlTgPv9TLPsY9O0h1MjbKW8/DB4S3RhmFWLcbLeoJ870do4b0zuRQWNPDAPvSkK6AAA=="],
 
