@@ -152,7 +152,7 @@ export namespace Certs {
       throw new InvalidSignatureError()
 
     /**
-     * We don't verify the RSA identity on Snowflake / Meek
+     * We don't verify the RSA identity on Meek
      */
 
     return true
@@ -180,7 +180,7 @@ export namespace Certs {
       throw new InvalidSignatureError()
 
     /**
-     * We don't verify the Ed25519 identity on Snowflake / Meek
+     * We don't verify the Ed25519 identity on Meek
      */
 
     return true

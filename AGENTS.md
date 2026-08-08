@@ -52,7 +52,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 
 1. **Meek URL** — Never restore `meek.azureedge.net`. Use CDN77 (`DEFAULT_MEEK_URL`).
 2. **Directory over meek** — Full consensus via Tor/meek truncates (~3.5MB). Use clearnet `fetchMicrodescConsensus` / `fetchMicrodesc`, then extend on Tor.
-3. **Hazae41 pins** — Keep cursor **1.x**, mutex **2.1.x**, asn1 **&lt; 1.3.32**, binary **1.3.5**, smux/kcp **1.1.3**. Crypto helpers (`base16`/`base64`/`ed25519`/`sha1`/`x25519`) are **dependencies**, not peers. Contracts in `tests/unit/deps-contracts.test.ts`. Use `overrides`.
+3. **Hazae41 pins** — Keep cursor **1.x**, mutex **2.1.x**, asn1 **&lt; 1.3.32**, binary **1.3.5**. Crypto helpers (`base16`/`base64`/`ed25519`/`sha1`/`x25519`) are **dependencies**, not peers. Contracts in `tests/unit/deps-contracts.test.ts`. Use `overrides`.
 4. **`@hazae41/bytes` `Uint8Array`** — Runtime ESM does **not** export a value. Always `import type { Uint8Array }`.
 5. **AES-CTR** — Mid-block keystream offset required (509-byte RELAY payloads). Vectors in `tests/unit/vectors/aes-ctr-wasm.json`. No runtime aes/rsa WASM.
 6. **X25519** — Noble via `initBundledCrypto` (native WebCrypto often rejects ntor keys).

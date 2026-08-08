@@ -47,11 +47,6 @@ describe("hazae41 dependency contracts", () => {
     expect(pkgVersion("@hazae41/binary")).toBe("1.3.5");
   });
 
-  test("smux and kcp stay on cursor-1.x line (1.1.3)", () => {
-    expect(pkgVersion("@hazae41/smux")).toBe("1.1.3");
-    expect(pkgVersion("@hazae41/kcp")).toBe("1.1.3");
-  });
-
   test("x509 is importable (export paths match tarball layout)", async () => {
     const x509 = await import("@hazae41/x509");
     expect(x509.Certificate).toBeDefined();

@@ -1,3 +1,2 @@
 * linguist-vendored=true
 *.ts linguist-vendored=false
-dist/* linguist-vendored=true
