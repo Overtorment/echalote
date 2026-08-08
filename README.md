@@ -99,8 +99,6 @@ Fetching the full ~3.5MB microdesc consensus **through meek** often truncates. T
 
 You can still `createOrThrow` + `extendOrThrow` yourself, or use in-Tor `Consensus.fetchOrThrow` / `Consensus.Microdesc.fetchOrThrow`. Prefer `buildExitCircuit` for reliability over meek.
 
-Snowflake (`createWebSocketSnowflakeStream`) remains available; meek + `buildExitCircuit` is the supported happy path here.
-
 ## Crypto
 
 | Algorithm | Implementation |
