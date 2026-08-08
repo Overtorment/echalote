@@ -47,7 +47,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 | `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
 | `tests/integration/` | Live meek → exit → HTTPS check |
 | `scripts/fix-hazae41-x509.mjs` | `postinstall` (must stay **node**-runnable) |
-| `rollup.config.js` | Library-only build (no test/bench bundles) |
+| `rollup.config.js` | Library-only build |
 
 ## Hard constraints
 
