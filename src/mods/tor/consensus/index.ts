@@ -1,1 +1,1 @@
-export * from "./consensus.js";
+export * from "./consensus.ts";

@@ -1,5 +1,5 @@
 import { Cursor } from "@hazae41/cursor";
-import { TypedAddress } from "mods/tor/binary/address.js";
+import { TypedAddress } from "../../../address.ts";
 
 export class NetinfoCell {
   readonly #class = NetinfoCell

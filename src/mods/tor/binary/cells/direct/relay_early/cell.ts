@@ -1,11 +1,11 @@
-import { AesWasm } from "libs/aes/index.js";
+import { AesWasm } from "../../../../../../libs/aes/index.ts";
 import { Opaque, Readable, Writable } from "@hazae41/binary";
 import { Bytes } from "@hazae41/bytes";
 import { Cursor } from "@hazae41/cursor";
-import { Cell, } from "mods/tor/binary/cells/cell.js";
-import { SecretCircuit } from "mods/tor/circuit.js";
-import { SecretTorStreamDuplex } from "mods/tor/stream.js";
-import { ExpectedCircuitError, ExpectedStreamError, InvalidRelayCommandError, UnexpectedStreamError, UnknownStreamError, UnrecognisedRelayCellError } from "../../errors.js";
+import { Cell, } from "../../cell.ts";
+import { SecretCircuit } from "../../../../circuit.ts";
+import { SecretTorStreamDuplex } from "../../../../stream.ts";
+import { ExpectedCircuitError, ExpectedStreamError, InvalidRelayCommandError, UnexpectedStreamError, UnknownStreamError, UnrecognisedRelayCellError } from "../../errors.ts";
 
 export interface RelayEarlyCellable {
   readonly rcommand: number,

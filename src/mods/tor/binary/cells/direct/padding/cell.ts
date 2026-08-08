@@ -1,5 +1,5 @@
 import { Cursor } from "@hazae41/cursor"
-import { Unimplemented } from "mods/tor/errors.js"
+import { Unimplemented } from "../../../../errors.ts"
 
 export class PaddingCell {
   readonly #class = PaddingCell

@@ -1,6 +1,6 @@
 import { Cursor } from "@hazae41/cursor";
-import { Dates } from "libs/dates/dates.js";
-import { Address4, Address6 } from "mods/tor/binary/address.js";
+import { Dates } from "../../../../../../libs/dates/dates.ts";
+import { Address4, Address6 } from "../../../address.ts";
 
 export type RelayEndReason =
   | RelayEndReasonExitPolicy

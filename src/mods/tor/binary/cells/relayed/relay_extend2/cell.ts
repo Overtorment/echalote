@@ -1,6 +1,6 @@
 import { Writable } from "@hazae41/binary"
 import { Cursor } from "@hazae41/cursor"
-import { RelayExtend2Link } from "mods/tor/binary/cells/relayed/relay_extend2/link.js"
+import { RelayExtend2Link } from "./link.ts"
 
 export class RelayExtend2Cell<T extends Writable> {
   readonly #class = RelayExtend2Cell

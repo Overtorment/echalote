@@ -1,7 +1,7 @@
-import { Aes128Ctr128BEKey } from "libs/aes/index.js";
+import { Aes128Ctr128BEKey } from "../../libs/aes/index.ts";
 import type { Uint8Array } from "@hazae41/bytes";
 import type { Sha1 } from "@hazae41/sha1";
-import { SecretCircuit } from "mods/tor/circuit.js";
+import { SecretCircuit } from "./circuit.ts";
 
 export class Target {
   readonly #class = Target

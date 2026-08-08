@@ -4,7 +4,7 @@ Guidance for AI agents and humans working in this repo. Consumer-facing docs liv
 
 ## What this is
 
-Fork of [hazae41/echalote](https://github.com/hazae41/echalote) for **Node.js (npm) and Bun**. Package ships compiled **`dist/`** (ESM + CJS + types) via Rollup. Source stays in `src/` with path aliases (`mods/*`, `libs/*`).
+Fork of [hazae41/echalote](https://github.com/hazae41/echalote) for **Bun** (and Jest-on-Node tests). Package exports TypeScript source from `src/` (same pattern as bip157/bip158). No Rollup/`dist` build step.
 
 Primary happy path:
 
@@ -15,23 +15,23 @@ Lower-level: `createMeekStream` → `TorClientDuplex` → `buildExitCircuit` →
 ## Commands
 
 ```bash
-npm install                 # prepare → npm run build; postinstall → node x509 fix
-npm run build               # rimraf dist && rollup -c
+npm install                 # postinstall → node x509 fix
 bun run test:unit           # Bun runner (rewrites @jest/globals → bun:test)
 npm run test:unit:node      # Jest on Node
 bun run test:integration
 npm run test:integration:node
+bun run test:package        # npm pack + Bun consumer smoke
 ```
 
 Tests import from `@jest/globals` (not `bun:test`). Bun’s runner rewrites that import; npm CI uses real Jest (`jest.config.cjs` + ts-jest).
 
 CI: `.github/workflows/ci.yml` — four jobs:
-- `unit-bun` / `integration-bun` — `bun install` + `bun test`
-- `unit-npm` / `integration-npm` — `npm ci` + smoke + Jest
+- `unit-bun` / `integration-bun` — `bun install` + unit/package or integration
+- `unit-npm` / `integration-npm` — `npm ci` + Jest
 
 Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 
-**Engines:** Node `>=24` (Active LTS).
+**Engines:** Node `>=24` (Active LTS). Consumers that import this package should use **Bun** (TypeScript source exports).
 
 ## Layout
 
@@ -43,11 +43,10 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 | `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` + `createExitDialer` |
 | `src/mods/crypto/` | Noble/WebCrypto adapters |
 | `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
-| `dist/` | Shipped in git for `github:` installs (Bun won't run prepare build tools). Rebuild with `npm run build` after source changes. |
 | `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
 | `tests/integration/` | Live meek → exit → HTTPS check |
+| `tests/package/` | Pack + consumer smoke (bip157-style) |
 | `scripts/fix-hazae41-x509.mjs` | `postinstall` (must stay **node**-runnable) |
-| `rollup.config.js` | Library-only build |
 
 ## Hard constraints
 
@@ -57,8 +56,9 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 4. **`@hazae41/bytes` `Uint8Array`** — Runtime ESM does **not** export a value. Always `import type { Uint8Array }`.
 5. **AES-CTR** — Mid-block keystream offset required (509-byte RELAY payloads). Vectors in `tests/unit/vectors/aes-ctr-wasm.json`. No runtime aes/rsa WASM.
 6. **X25519** — Noble via `initBundledCrypto` (native WebCrypto often rejects ntor keys).
-7. **Node/npm first for the package surface** — `postinstall`/`prepare`/`build` must work with Node + npm. Do not make lifecycle scripts Bun-only. Tests may keep using Bun.
-8. **No Lefthook in `~`** — Do not install Lefthook hooks in the home git repo.
+7. **TypeScript source exports** — `package.json` points at `./src/index.ts`. Use relative `.ts` imports inside `src/` (no `mods/*` / `libs/*` path aliases, no Rollup/`dist`).
+8. **`postinstall` stays Node-runnable** — Do not make lifecycle scripts Bun-only.
+9. **No Lefthook in `~`** — Do not install Lefthook hooks in the home git repo.
 
 ## When changing crypto or circuits
 
@@ -66,7 +66,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 - After circuit/directory changes, run `bun run test:integration` (or CI).
 - Prefer `createExitDialer` for consumers; keep `buildExitCircuit` for custom pipelines.
 - `TorStreamDuplex.outer` is raw `Uint8Array`. Opaque stays internal; use `asOpaqueDuplex` only for hazae41 Cadenas/Fleche piping.
-- After entrypoint or path-alias changes, run `npm run build` and verify `node` can `import` / `require` from `dist/`.
+- After entrypoint changes, run `bun run test:package` and verify a Bun consumer can `import` from `@hazae41/echalote`.
 
 ## Style
 

@@ -1,3 +1,3 @@
-export * from "./mods/index.js";
-export * as Echalote from "./mods/index.js";
+export * from "./mods/index.ts";
+export * as Echalote from "./mods/index.ts";
 

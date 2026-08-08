@@ -1,4 +1,4 @@
-import { BatchedFetchStream } from "libs/transports/http.js"
+import { BatchedFetchStream } from "../../libs/transports/http.ts"
 
 /**
  * Tor Browser's CDN77 meek bridge backend.

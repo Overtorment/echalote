@@ -1,1 +1,1 @@
-export * from "./meek.js";
+export * from "./meek.ts";

@@ -1,4 +1,4 @@
-export * from "./address.js";
-export * from "./cells/index.js";
-export * from "./certs/index.js";
+export * from "./address.ts";
+export * from "./cells/index.ts";
+export * from "./certs/index.ts";
 

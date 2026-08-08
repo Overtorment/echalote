@@ -1,5 +1,5 @@
 import { Cursor } from "@hazae41/cursor";
-import { DestroyCell } from "mods/tor/binary/cells/direct/destroy/cell.js";
+import { DestroyCell } from "../../direct/destroy/cell.ts";
 
 export class RelayTruncatedCell {
   readonly #class = RelayTruncatedCell

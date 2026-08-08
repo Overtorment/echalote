@@ -1,7 +1,7 @@
-import { Circuit } from "../circuit.js"
-import { TorClientDuplex } from "../client.js"
-import { Consensus } from "../consensus/consensus.js"
-import { fetchMicrodesc, fetchMicrodescConsensus } from "./clearnet.js"
+import { Circuit } from "../circuit.ts"
+import { TorClientDuplex } from "../client.ts"
+import { Consensus } from "../consensus/consensus.ts"
+import { fetchMicrodesc, fetchMicrodescConsensus } from "./clearnet.ts"
 
 export type BuildExitCircuitOptions = {
   /** Clearnet consensus mirror URLs. */

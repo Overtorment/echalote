@@ -2,14 +2,14 @@ import { Opaque, Writable } from "@hazae41/binary";
 import { FullDuplex } from "@hazae41/cascade";
 import { Cursor } from "@hazae41/cursor";
 import { CloseEvents, ErrorEvents, SuperEventTarget } from "@hazae41/plume";
-import { Console } from "mods/console/index.js";
-import { RelayCell } from "mods/tor/binary/cells/direct/relay/cell.js";
-import { RelayDataCell } from "mods/tor/binary/cells/relayed/relay_data/cell.js";
-import { RelayEndCell } from "mods/tor/binary/cells/relayed/relay_end/cell.js";
-import { SecretCircuit } from "mods/tor/circuit.js";
-import { RelayConnectedCell } from "./binary/cells/relayed/relay_connected/cell.js";
-import { RelayEndReason, RelayEndReasonOther } from "./binary/cells/relayed/relay_end/reason.js";
-import { RelaySendmeStreamCell } from "./binary/cells/relayed/relay_sendme/cell.js";
+import { Console } from "../console/index.ts";
+import { RelayCell } from "./binary/cells/direct/relay/cell.ts";
+import { RelayDataCell } from "./binary/cells/relayed/relay_data/cell.ts";
+import { RelayEndCell } from "./binary/cells/relayed/relay_end/cell.ts";
+import { SecretCircuit } from "./circuit.ts";
+import { RelayConnectedCell } from "./binary/cells/relayed/relay_connected/cell.ts";
+import { RelayEndReason, RelayEndReasonOther } from "./binary/cells/relayed/relay_end/reason.ts";
+import { RelaySendmeStreamCell } from "./binary/cells/relayed/relay_sendme/cell.ts";
 
 /**
  * Adapt the internal Opaque/Writable duplex to raw bytes for public consumers.

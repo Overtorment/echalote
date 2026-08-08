@@ -1,7 +1,7 @@
 import { Opaque, Writable } from "@hazae41/binary"
 import { KcpDuplex } from "@hazae41/kcp"
 import { SmuxDuplex } from "@hazae41/smux"
-import { TurboDuplex } from "mods/snowflake/turbo/stream.js"
+import { TurboDuplex } from "./turbo/stream.ts"
 
 export function createSnowflakeStream(raw: { outer: ReadableWritablePair<Opaque, Writable> }): { outer: ReadableWritablePair<Opaque, Writable> } {
   const turbo = new TurboDuplex()

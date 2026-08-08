@@ -1,4 +1,4 @@
-import { UnknownAddressType } from "./relayed/relay_connected/cell.js"
+import { UnknownAddressType } from "./relayed/relay_connected/cell.ts"
 
 export type CellError =
   | InvalidCellError

@@ -1,6 +1,6 @@
 # @hazae41/echalote (Overtorment fork)
 
-Zero-copy Tor client protocol in TypeScript. This fork targets **Node.js (npm) and Bun**: working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
+Zero-copy Tor client protocol in TypeScript. This fork targets **Bun** consumers: working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
 
 Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
 
@@ -8,19 +8,15 @@ Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
 
 ## Requirements
 
-- **Node.js ≥ 24** (Active LTS)
-- Or **Bun** (same APIs; tests use Bun)
-
-Published package is compiled JS under `dist/` (ESM + CJS + types). `npm install` / `bun install` from git/`file:` runs `prepare` → `npm run build`.
+- **Bun** (package exports TypeScript source from `src/`, same pattern as bip157/bip158)
+- **Node.js ≥ 24** for Jest CI / `postinstall` only
 
 ## Install
 
 ```bash
-npm install github:Overtorment/echalote
-# or
 bun add github:Overtorment/echalote
 # local checkout:
-npm install file:../echalote
+bun add file:../echalote
 ```
 
 Crypto helpers (`base16` / `base64` / `ed25519` / `sha1` / `x25519`) are normal dependencies — no separate peer install. Versions are pinned; do not upgrade casually.
@@ -119,15 +115,15 @@ No `@hazae41/aes.wasm` / `@hazae41/rsa.wasm`.
 ## Develop
 
 ```bash
-npm install                 # also runs prepare → build
-npm run build               # rollup → dist/esm, dist/cjs, dist/types
+npm install                 # postinstall → x509 export fix
 bun run test:unit           # Bun test runner
 npm run test:unit:node      # Jest on Node (same tests)
 bun run test:integration
 npm run test:integration:node
+bun run test:package        # npm pack + Bun consumer smoke
 ```
 
-Tests use `@jest/globals`. Bun rewrites those imports to its runner; npm CI runs Jest. Layout: `tests/unit/`, `tests/integration/`.
+Tests use `@jest/globals`. Bun rewrites those imports to its runner; npm CI runs Jest. Layout: `tests/unit/`, `tests/integration/`, `tests/package/`.
 
 ## Privacy / threat model (short)
 

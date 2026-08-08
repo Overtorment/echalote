@@ -1,7 +1,7 @@
 import { Opaque, Writable } from "@hazae41/binary"
 import { FullDuplex } from "@hazae41/cascade"
 import { Cursor } from "@hazae41/cursor"
-import { Resizer } from "libs/resizer/resizer.js"
+import { Resizer } from "../resizer/resizer.ts"
 
 export class BatchedFetchStream {
 
