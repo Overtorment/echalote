@@ -2,9 +2,9 @@ import { Opaque, Writable } from "@hazae41/binary"
 import { Bytes } from "@hazae41/bytes"
 import { FullDuplex } from "@hazae41/cascade"
 import { Future } from "@hazae41/future"
-import { Awaitable } from "libs/promises/index.js"
-import { SecretTurboReader } from "./reader.js"
-import { SecretTurboWriter } from "./writer.js"
+import { Awaitable } from "../../../libs/promises/index.ts"
+import { SecretTurboReader } from "./reader.ts"
+import { SecretTurboWriter } from "./writer.ts"
 
 export interface TurboDuplexParams {
   readonly client?: Uint8Array

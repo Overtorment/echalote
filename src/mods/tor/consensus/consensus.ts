@@ -3,11 +3,11 @@ import { Base16 } from "@hazae41/base16"
 import { Base64 } from "@hazae41/base64"
 import { Bytes } from "@hazae41/bytes"
 import { fetch } from "@hazae41/fleche"
-import { RsaWasm } from "libs/rsa/index.js"
+import { RsaWasm } from "../../../libs/rsa/index.ts"
 import { OIDs, X509 } from "@hazae41/x509"
-import { Mutable } from "libs/typescript/typescript.js"
-import { Circuit } from "../circuit.js"
-import { asOpaqueDuplex } from "../stream.js"
+import { Mutable } from "../../../libs/typescript/typescript.ts"
+import { Circuit } from "../circuit.ts"
+import { asOpaqueDuplex } from "../stream.ts"
 
 export interface Consensus {
   readonly type: string

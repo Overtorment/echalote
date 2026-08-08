@@ -1,2 +1,2 @@
-export * from "./cell.js";
-export * from "./reason.js";
+export * from "./cell.ts";
+export * from "./reason.ts";

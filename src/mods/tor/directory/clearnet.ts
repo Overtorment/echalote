@@ -6,7 +6,7 @@
  */
 import { sha256 } from "@noble/hashes/sha2.js"
 import { inflateSync } from "node:zlib"
-import { Consensus } from "../consensus/consensus.js"
+import { Consensus } from "../consensus/consensus.ts"
 
 /**
  * v3 directory authorities (dirport), from tor `auth_dirs.inc`.

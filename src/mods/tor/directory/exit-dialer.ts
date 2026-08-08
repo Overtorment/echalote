@@ -2,11 +2,11 @@
  * High-level clearnet dial over meek + exit circuit.
  * Onion-service (HS) client is not implemented.
  */
-import { createMeekStream, DEFAULT_MEEK_URL } from "../../meek/meek.js"
-import { Circuit } from "../circuit.js"
-import { TorClientDuplex } from "../client.js"
-import { TorStreamDuplex } from "../stream.js"
-import { buildExitCircuit } from "./build-exit-circuit.js"
+import { createMeekStream, DEFAULT_MEEK_URL } from "../../meek/meek.ts"
+import { Circuit } from "../circuit.ts"
+import { TorClientDuplex } from "../client.ts"
+import { TorStreamDuplex } from "../stream.ts"
+import { buildExitCircuit } from "./build-exit-circuit.ts"
 
 export type ExitDialer = {
   /** RELAY_BEGIN to host:port via a Tor exit. `stream.outer` is Uint8Array. */

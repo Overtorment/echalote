@@ -28,6 +28,9 @@ jobs:
       - name: Run unit tests
         run: bun run test:unit
 
+      - name: Package smoke
+        run: bun run test:package
+
   unit-npm:
     name: Unit (npm / Jest)
     runs-on: ubuntu-latest
@@ -44,9 +47,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Smoke dist under Node (ESM + CJS)
-        run: npm run smoke:node
 
       - name: Run unit tests (Jest)
         run: npm run test:unit:node
@@ -86,9 +86,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Smoke dist under Node (ESM + CJS)
-        run: npm run smoke:node
 
       - name: Run live integration test (Jest)
         run: npm run test:integration:node

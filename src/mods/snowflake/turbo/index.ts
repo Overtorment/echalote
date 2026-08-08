@@ -1,2 +1,2 @@
-export * from "./frame.js"
-export * from "./stream.js"
+export * from "./frame.ts"
+export * from "./stream.ts"

@@ -20,22 +20,13 @@ module.exports = {
           allowImportingTsExtensions: true,
           noEmit: true,
           lib: ["DOM", "ESNext"],
-          baseUrl: "./src",
-          paths: {
-            "mods/*": ["mods/*"],
-            "libs/*": ["libs/*"],
-          },
         },
       },
     ],
   },
   moduleNameMapper: {
-    // Source uses NodeNext-style `.js` specifiers that resolve to `.ts` files.
-    "^libs/(.*)\\.js$": "<rootDir>/src/libs/$1.ts",
-    "^mods/(.*)\\.js$": "<rootDir>/src/mods/$1.ts",
-    "^libs/(.*)$": "<rootDir>/src/libs/$1",
-    "^mods/(.*)$": "<rootDir>/src/mods/$1",
-    "^(\\.{1,2}/.*)\\.js$": "$1",
+    // Source uses `.ts` specifiers; strip for ts-jest resolution.
+    "^(\\.{1,2}/.*)\\.ts$": "$1",
   },
   transformIgnorePatterns: [
     "/node_modules/(?!(@noble|@hazae41)/)",

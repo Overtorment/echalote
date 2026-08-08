@@ -1,1 +1,1 @@
-export * as Ntor from "./ntor.js";
+export * as Ntor from "./ntor.ts";

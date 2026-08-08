@@ -1,6 +1,6 @@
 import type { Uint8Array } from "@hazae41/bytes"
 import { Cursor } from "@hazae41/cursor"
-import { HASH_LEN, KEY_LEN } from "mods/tor/constants.js"
+import { HASH_LEN, KEY_LEN } from "../constants.ts"
 
 export class InvalidKdfKeyHashError extends Error {
   readonly #class = InvalidKdfKeyHashError

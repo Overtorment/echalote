@@ -1,4 +1,4 @@
-export * from "./cross/index.js";
-export * from "./ed25519/index.js";
-export * from "./rsa/index.js";
+export * from "./cross/index.ts";
+export * from "./ed25519/index.ts";
+export * from "./rsa/index.ts";
 

@@ -1,6 +1,6 @@
 import type { Uint8Array } from "@hazae41/bytes"
 import { Cursor } from "@hazae41/cursor"
-import { Unimplemented } from "mods/tor/errors.js"
+import { Unimplemented } from "../../../../errors.ts"
 
 export class AuthChallengeCell {
   readonly #class = AuthChallengeCell

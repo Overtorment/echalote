@@ -1,5 +1,5 @@
 import { Cursor } from "@hazae41/cursor";
-import { RelayEndReason, RelayEndReasonExitPolicy, RelayEndReasonOther } from "mods/tor/binary/cells/relayed/relay_end/reason.js";
+import { RelayEndReason, RelayEndReasonExitPolicy, RelayEndReasonOther } from "./reason.ts";
 
 export class RelayEndCell {
   readonly #class = RelayEndCell

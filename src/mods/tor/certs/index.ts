@@ -1,2 +1,2 @@
-export * from "./certs.js";
+export * from "./certs.ts";
 

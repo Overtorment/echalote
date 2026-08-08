@@ -1,4 +1,4 @@
-import { Guard } from "./client.js"
+import { Guard } from "./client.ts"
 
 export type TorState =
   | TorNoneState

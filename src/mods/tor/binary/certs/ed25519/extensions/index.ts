@@ -1,1 +1,1 @@
-export * from "./signer.js";
+export * from "./signer.ts";

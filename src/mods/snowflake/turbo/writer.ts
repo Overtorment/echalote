@@ -1,6 +1,6 @@
 import { Opaque, Writable } from "@hazae41/binary";
-import { TurboFrame } from "./frame.js";
-import { SecretTurboDuplex } from "./stream.js";
+import { TurboFrame } from "./frame.ts";
+import { SecretTurboDuplex } from "./stream.ts";
 
 export class SecretTurboWriter {
 
