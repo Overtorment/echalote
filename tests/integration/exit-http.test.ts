@@ -4,10 +4,11 @@
  */
 import { describe, expect, test } from "@jest/globals";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
-import { fetch as flecheFetch } from "@hazae41/fleche";
 import {
+  asBytesDuplex,
   asOpaqueDuplex,
   createExitDialer,
+  streamFetch,
 } from "../../src/mods/index.ts";
 
 const OVERALL_MS = 120_000;
@@ -26,12 +27,9 @@ async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: st
       opaque.readable.pipeTo(tls.inner.writable).catch(() => {});
       tls.inner.readable.pipeTo(opaque.writable).catch(() => {});
 
-      const res = await flecheFetch("https://check.torproject.org/api/ip", {
-        stream: tls.outer,
+      const res = await streamFetch("https://check.torproject.org/api/ip", {
+        stream: asBytesDuplex(tls.outer),
         signal: AbortSignal.any([signal, AbortSignal.timeout(20_000)]),
-        preventAbort: true,
-        preventCancel: true,
-        preventClose: true,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { IsTor?: boolean; IP?: string };

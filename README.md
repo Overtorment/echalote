@@ -1,6 +1,6 @@
 # @hazae41/echalote (Overtorment fork)
 
-Zero-copy Tor client protocol in TypeScript. This fork targets **Bun** consumers: working meek defaults, pinned hazae41 deps, Noble crypto (no AES/RSA WASM), and helpers to build exit circuits with clearnet directory fetches.
+Zero-copy Tor client protocol in TypeScript. This fork targets **Bun** consumers: working meek defaults, pinned hazae41 deps, Noble crypto (no WASM), and helpers to build exit circuits with clearnet directory fetches.
 
 Upstream: [hazae41/echalote](https://github.com/hazae41/echalote).
 
@@ -29,8 +29,12 @@ Recommended path for clearnet destinations (`host:port` via a Tor exit):
 
 ```ts
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas"
-import { fetch } from "@hazae41/fleche"
-import { asOpaqueDuplex, createExitDialer } from "@hazae41/echalote"
+import {
+  asBytesDuplex,
+  asOpaqueDuplex,
+  createExitDialer,
+  streamFetch,
+} from "@hazae41/echalote"
 
 const signal = AbortSignal.timeout(120_000)
 const dialer = createExitDialer()
@@ -48,12 +52,9 @@ try {
   opaque.readable.pipeTo(tls.inner.writable).catch(() => {})
   tls.inner.readable.pipeTo(opaque.writable).catch(() => {})
 
-  const res = await fetch("https://check.torproject.org/api/ip", {
-    stream: tls.outer,
+  const res = await streamFetch("https://check.torproject.org/api/ip", {
+    stream: asBytesDuplex(tls.outer),
     signal,
-    preventAbort: true,
-    preventCancel: true,
-    preventClose: true,
   })
   console.log(await res.json()) // { IsTor: true, IP: "..." }
 
@@ -78,7 +79,9 @@ Lower-level pieces (`createMeekStream`, `TorClientDuplex`, `buildExitCircuit`, `
 | `fetchMicrodesc(head, signal?, opts?)` | Clearnet microdescriptor body + digest check. |
 | `buildExitCircuit(client, signal?, opts?)` | Create + extend middle + exit using the clearnet helpers above. |
 | `Circuit` / `openOrThrow` | Open a stream to `hostname:port`. `stream.outer` is raw `Uint8Array`. |
-| `asOpaqueDuplex(bytes)` | Wrap a Uint8Array duplex for hazae41 Cadenas/Fleche (`Opaque`/`Writable`). |
+| `streamFetch(url, { stream, … })` | HTTP/1.1 over a `Uint8Array` duplex (Tor stream or TLS bytes). |
+| `asOpaqueDuplex(bytes)` | Wrap a Uint8Array duplex for Cadenas (`Opaque`/`Writable`). |
+| `asBytesDuplex(opaque)` | Inverse: Cadenas/TLS `outer` → `Uint8Array` duplex for `streamFetch`. |
 
 ### `buildExitCircuit` options
 
@@ -108,7 +111,7 @@ You can still `createOrThrow` + `extendOrThrow` yourself, or use in-Tor `Consens
 | AES-128-CTR (relay cells) | `@noble/ciphers` (`src/libs/aes`) |
 | RSA PKCS#1 v1.5 unprefixed verify | BigInt + Node `crypto` SPKI (`src/libs/rsa`) |
 
-No `@hazae41/aes.wasm` / `@hazae41/rsa.wasm`.
+No WASM packages (`aes` / `rsa` / `bitwise` / Fleche).
 
 ## Develop
 

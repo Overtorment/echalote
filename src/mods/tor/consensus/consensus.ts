@@ -2,12 +2,11 @@ import { ASN1 } from "@hazae41/asn1"
 import { Base16 } from "@hazae41/base16"
 import { Base64 } from "@hazae41/base64"
 import { Bytes } from "@hazae41/bytes"
-import { fetch } from "@hazae41/fleche"
+import { streamFetch } from "../../../libs/http/index.ts"
 import { RsaWasm } from "../../../libs/rsa/index.ts"
 import { OIDs, X509 } from "@hazae41/x509"
 import { Mutable } from "../../../libs/typescript/typescript.ts"
 import { Circuit } from "../circuit.ts"
-import { asOpaqueDuplex } from "../stream.ts"
 
 export interface Consensus {
   readonly type: string
@@ -77,7 +76,7 @@ export namespace Consensus {
 
   export async function fetchOrThrow(circuit: Circuit, signal = new AbortController().signal) {
     const stream = await circuit.openDirOrThrow({}, signal)
-    const response = await fetch(`http://localhost/tor/status-vote/current/consensus-microdesc.z`, { stream: asOpaqueDuplex(stream.outer), signal })
+    const response = await streamFetch(`http://localhost/tor/status-vote/current/consensus-microdesc.z`, { stream: stream.outer, signal })
     const consensus = Consensus.parseOrThrow(await response.text())
 
     if (await Consensus.verifyOrThrow(circuit, consensus, signal) !== true)
@@ -472,7 +471,7 @@ export namespace Consensus {
 
     export async function fetchAllOrThrow(circuit: Circuit, signal = new AbortController().signal) {
       const stream = await circuit.openDirOrThrow({}, signal)
-      const response = await fetch(`http://localhost/tor/keys/fp/all.z`, { stream: asOpaqueDuplex(stream.outer), signal })
+      const response = await streamFetch(`http://localhost/tor/keys/fp/all.z`, { stream: stream.outer, signal })
 
       if (!response.ok)
         throw new Error(`Could not fetch`)
@@ -489,7 +488,7 @@ export namespace Consensus {
 
     export async function fetchOrThrow(circuit: Circuit, fingerprint: string, signal = new AbortController().signal) {
       const stream = await circuit.openDirOrThrow(undefined, signal)
-      const response = await fetch(`http://localhost/tor/keys/fp/${fingerprint}.z`, { stream: asOpaqueDuplex(stream.outer), signal })
+      const response = await streamFetch(`http://localhost/tor/keys/fp/${fingerprint}.z`, { stream: stream.outer, signal })
 
       if (!response.ok)
         throw new Error(`Could not fetch`)
@@ -667,7 +666,7 @@ export namespace Consensus {
 
     export async function fetchOrThrow(circuit: Circuit, ref: Head, signal = new AbortController().signal) {
       const stream = await circuit.openDirOrThrow({}, signal)
-      const response = await fetch(`http://localhost/tor/micro/d/${ref.microdesc}.z`, { stream: asOpaqueDuplex(stream.outer), signal })
+      const response = await streamFetch(`http://localhost/tor/micro/d/${ref.microdesc}.z`, { stream: stream.outer, signal })
 
       if (!response.ok)
         throw new Error(`Could not fetch ${response.status} ${response.statusText}: ${await response.text()}`)
