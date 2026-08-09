@@ -84,7 +84,8 @@ function shuffleInPlace<T>(items: T[]): T[] {
 
 /**
  * Run workers over `items` with a concurrency cap. First success wins;
- * abort remaining in-flight work. Throws the last error if all fail.
+ * abort remaining in-flight work. Throws an `AggregateError` with every
+ * worker failure if all items fail.
  */
 export async function fetchFirstOk<T, R>(
   items: readonly T[],
@@ -103,22 +104,50 @@ export async function fetchFirstOk<T, R>(
   const localControllers: AbortController[] = []
 
   return await new Promise<R>((resolve, reject) => {
+    const settleReject = (err: unknown) => {
+      if (settled) return
+      settled = true
+      parent.removeEventListener("abort", onParentAbort)
+      reject(err)
+    }
+    const settleResolve = (value: R) => {
+      if (settled) return
+      settled = true
+      parent.removeEventListener("abort", onParentAbort)
+      for (const c of localControllers) {
+        try {
+          c.abort(new Error("fetchFirstOk: lost race"))
+        } catch {
+          // ignore
+        }
+      }
+      resolve(value)
+    }
+
+    const onParentAbort = () => {
+      const reason = parent.reason ?? new Error("aborted")
+      for (const c of localControllers) {
+        try {
+          c.abort(reason)
+        } catch {
+          // ignore
+        }
+      }
+      settleReject(reason)
+    }
+    parent.addEventListener("abort", onParentAbort, { once: true })
+
     const failIfDone = () => {
       if (settled) return
       if (cursor >= items.length && inFlight === 0) {
-        settled = true
-        reject(
-          errors.find((e) => e instanceof Error) ??
-            new Error("fetchFirstOk: all failed", { cause: errors[0] }),
-        )
+        settleReject(new AggregateError(errors, "fetchFirstOk: all failed"))
       }
     }
 
     const launch = () => {
       while (!settled && inFlight < concurrency && cursor < items.length) {
         if (parent.aborted) {
-          settled = true
-          reject(parent.reason ?? new Error("aborted"))
+          settleReject(parent.reason ?? new Error("aborted"))
           return
         }
         const item = items[cursor]!
@@ -130,16 +159,7 @@ export async function fetchFirstOk<T, R>(
         void worker(item, linked).then(
           (value) => {
             inFlight -= 1
-            if (settled) return
-            settled = true
-            for (const c of localControllers) {
-              try {
-                c.abort(new Error("fetchFirstOk: lost race"))
-              } catch {
-                // ignore
-              }
-            }
-            resolve(value)
+            settleResolve(value)
           },
           (err) => {
             inFlight -= 1
@@ -157,7 +177,6 @@ export async function fetchFirstOk<T, R>(
     launch()
   })
 }
-
 export type FetchMicrodescConsensusOptions = {
   mirrors?: readonly string[]
   /** Skip the in-process cache. Default false. */
@@ -248,11 +267,14 @@ export async function fetchMicrodesc(
       { concurrency: options.concurrency ?? 4, signal },
     )
   } catch (err) {
-    if (err instanceof Error && err.message.startsWith("fetchFirstOk")) {
-      throw new Error("no microdesc URL succeeded", { cause: err })
+    if (signal.aborted) {
+      throw signal.reason instanceof Error
+        ? signal.reason
+        : err instanceof Error
+          ? err
+          : new Error("aborted")
     }
-    throw err instanceof Error
-      ? err
-      : new Error(`microdesc fetch failed for ${head.nickname}`)
+    // Stable message for isTransientCircuitError / dialer retry paths.
+    throw new Error("no microdesc URL succeeded", { cause: err })
   }
 }

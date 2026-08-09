@@ -2,6 +2,7 @@ import { describe, expect, test } from "@jest/globals"
 import {
   buildExitCircuit,
   isTransientCircuitError,
+  raceFirstCircuit,
 } from "../../src/mods/tor/directory/build-exit-circuit.ts"
 import type { Circuit } from "../../src/mods/tor/circuit.ts"
 import type { TorClientDuplex } from "../../src/mods/tor/client.ts"
@@ -90,5 +91,56 @@ describe("buildExitCircuit retry + race", () => {
     expect((result as unknown as { id: number }).id).toBe(2)
     await new Promise((r) => setTimeout(r, 120))
     expect(closed).toContain(1)
+  })
+
+  test("rejects non-integer circuitRace", async () => {
+    const client = {} as TorClientDuplex
+    await expect(
+      buildExitCircuit(client, undefined, {
+        circuitRace: Number.NaN,
+        buildOnce: async () => fakeCircuit(1),
+      }),
+    ).rejects.toThrow(/positive integer/i)
+    await expect(
+      buildExitCircuit(client, undefined, {
+        circuitRace: 1.5,
+        buildOnce: async () => fakeCircuit(1),
+      }),
+    ).rejects.toThrow(/positive integer/i)
+  })
+})
+
+describe("raceFirstCircuit", () => {
+  test("rejects when parent aborts even if a builder ignores the signal", async () => {
+    const parent = new AbortController()
+    const pending = raceFirstCircuit(
+      1,
+      async () => {
+        // Ignore signal on purpose — parent abort must still settle.
+        await new Promise(() => {})
+        return fakeCircuit(1)
+      },
+      parent.signal,
+    )
+    await Promise.resolve()
+    parent.abort(new Error("parent cancelled"))
+    await expect(pending).rejects.toThrow(/parent cancelled/)
+  })
+
+  test("does not abort the winner signal after settle", async () => {
+    const winnerSignals: AbortSignal[] = []
+    const circuit = await raceFirstCircuit(
+      2,
+      async (signal) => {
+        winnerSignals.push(signal)
+        if (winnerSignals.length === 1) {
+          await new Promise((r) => setTimeout(r, 50))
+          if (signal.aborted) throw signal.reason ?? new Error("aborted")
+        }
+        return fakeCircuit(winnerSignals.length)
+      },
+    )
+    expect((circuit as unknown as { id: number }).id).toBe(2)
+    expect(winnerSignals[1]!.aborted).toBe(false)
   })
 })

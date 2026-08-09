@@ -138,32 +138,53 @@ export async function raceFirstCircuit(
   build: (signal: AbortSignal) => Promise<Circuit>,
   signal: AbortSignal = new AbortController().signal,
 ): Promise<Circuit> {
-  if (raceCount < 1) throw new Error("circuitRace must be >= 1")
+  if (!Number.isSafeInteger(raceCount) || raceCount < 1) {
+    throw new Error("circuitRace must be a positive integer")
+  }
   if (signal.aborted) throw signal.reason ?? new Error("aborted")
 
   const localControllers = Array.from(
     { length: raceCount },
     () => new AbortController(),
   )
-  const abortLocals = () => {
-    for (const c of localControllers) {
+  const abortLosers = (winnerIndex: number) => {
+    for (let i = 0; i < localControllers.length; i++) {
+      if (i === winnerIndex) continue
       try {
-        c.abort(signal.reason ?? new Error("circuit race lost"))
+        localControllers[i]!.abort(new Error("circuit race lost"))
       } catch {
         // ignore
       }
     }
   }
-  const onParentAbort = () => abortLocals()
-  signal.addEventListener("abort", onParentAbort, { once: true })
+  const abortAllLocals = (reason: unknown) => {
+    for (const c of localControllers) {
+      try {
+        c.abort(reason)
+      } catch {
+        // ignore
+      }
+    }
+  }
 
   let settled = false
   const errors: unknown[] = []
   let remaining = raceCount
+  let rejectRace: ((err: unknown) => void) | undefined
+
+  const onParentAbort = () => {
+    if (settled) return
+    settled = true
+    const reason = signal.reason ?? new Error("aborted")
+    abortAllLocals(reason)
+    rejectRace?.(reason)
+  }
+  signal.addEventListener("abort", onParentAbort, { once: true })
 
   try {
     return await new Promise<Circuit>((resolve, reject) => {
-      for (const local of localControllers) {
+      rejectRace = reject
+      localControllers.forEach((local, index) => {
         const linked = AbortSignal.any([signal, local.signal])
         void build(linked).then(
           (circuit) => {
@@ -172,13 +193,14 @@ export async function raceFirstCircuit(
               return
             }
             settled = true
-            abortLocals()
+            abortLosers(index)
             resolve(circuit)
           },
           (err) => {
             errors.push(err)
             remaining -= 1
             if (!settled && remaining === 0) {
+              settled = true
               reject(
                 errors.find((e) => e instanceof Error) ??
                   new Error("circuit race failed", { cause: errors[0] }),
@@ -186,13 +208,12 @@ export async function raceFirstCircuit(
             }
           },
         )
-      }
+      })
     })
   } finally {
     signal.removeEventListener("abort", onParentAbort)
   }
 }
-
 /**
  * Build a 3-hop exit circuit using clearnet directory data + Tor extends.
  * Retries transient directory/extend failures and races parallel builds.

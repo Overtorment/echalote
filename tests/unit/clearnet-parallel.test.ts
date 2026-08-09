@@ -46,4 +46,33 @@ describe("fetchFirstOk", () => {
     expect(result).toBe("c")
     expect(n).toBe(3)
   })
+
+  test("rejects AggregateError when every worker fails", async () => {
+    await expect(
+      fetchFirstOk(
+        ["a", "b"],
+        async (key) => {
+          throw new Error(`fail ${key}`)
+        },
+        { concurrency: 2 },
+      ),
+    ).rejects.toMatchObject({
+      name: "AggregateError",
+      message: expect.stringMatching(/fetchFirstOk/i),
+    })
+  })
+
+  test("rejects on parent abort even if a worker ignores the signal", async () => {
+    const parent = new AbortController()
+    const pending = fetchFirstOk(
+      ["hang"],
+      async () => {
+        await new Promise(() => {})
+        return "never"
+      },
+      { concurrency: 1, signal: parent.signal },
+    )
+    parent.abort(new Error("parent cancelled"))
+    await expect(pending).rejects.toThrow(/parent cancelled/)
+  })
 })
