@@ -44,56 +44,84 @@ function maybeInflateZlib(buf: Uint8Array): Uint8Array {
   return buf
 }
 
-function parseChunked(body: Uint8Array): Uint8Array {
-  const parts: Uint8Array[] = []
-  let offset = 0
-  while (offset < body.length) {
-    const lineEnd = indexOf(body, CRLF, offset)
-    if (lineEnd === -1) throw new Error("Invalid chunked encoding: missing chunk size")
-    const size = parseInt(decoder.decode(body.subarray(offset, lineEnd)), 16)
-    if (Number.isNaN(size)) throw new Error("Invalid chunk size")
-    offset = lineEnd + 2
-    if (size === 0) break
-    if (offset + size + 2 > body.length)
-      throw new Error("Invalid chunked encoding: truncated chunk")
-    parts.push(body.subarray(offset, offset + size))
-    offset += size + 2
-  }
-  return concat(parts)
-}
+class ByteReader {
+  #buf = new Uint8Array(0)
+  #reader: ReadableStreamDefaultReader<Uint8Array>
+  #signal?: AbortSignal
+  #onAbort: () => void
 
-async function readAll(
-  readable: ReadableStream<Uint8Array>,
-  signal?: AbortSignal,
-): Promise<Uint8Array> {
-  const reader = readable.getReader()
-  const onAbort = () => {
-    reader.cancel(signal?.reason).catch(() => {})
-  }
-  signal?.addEventListener("abort", onAbort, { once: true })
-  if (signal?.aborted) onAbort()
-
-  const chunks: Uint8Array[] = []
-  try {
-    while (true) {
-      if (signal?.aborted) {
-        throw signal.reason instanceof Error
-          ? signal.reason
-          : new DOMException("Aborted", "AbortError")
-      }
-      const { done, value } = await reader.read()
-      if (done) break
-      if (value?.length) chunks.push(value)
+  constructor(readable: ReadableStream<Uint8Array>, signal?: AbortSignal) {
+    this.#reader = readable.getReader()
+    this.#signal = signal
+    this.#onAbort = () => {
+      this.#reader.cancel(signal?.reason).catch(() => {})
     }
-  } finally {
-    signal?.removeEventListener("abort", onAbort)
+    signal?.addEventListener("abort", this.#onAbort, { once: true })
+    if (signal?.aborted) this.#onAbort()
   }
-  return concat(chunks)
+
+  release() {
+    this.#signal?.removeEventListener("abort", this.#onAbort)
+    this.#reader.releaseLock()
+  }
+
+  #throwIfAborted() {
+    if (!this.#signal?.aborted) return
+    throw this.#signal.reason instanceof Error
+      ? this.#signal.reason
+      : new DOMException("Aborted", "AbortError")
+  }
+
+  async #pull() {
+    this.#throwIfAborted()
+    const { done, value } = await this.#reader.read()
+    this.#throwIfAborted()
+    if (done) throw new Error("Unexpected end of HTTP stream")
+    if (value?.length) this.#buf = concat([this.#buf, value])
+  }
+
+  async readUntil(needle: Uint8Array): Promise<Uint8Array> {
+    while (true) {
+      const i = indexOf(this.#buf, needle)
+      if (i !== -1) {
+        const before = this.#buf.subarray(0, i)
+        this.#buf = this.#buf.subarray(i + needle.length)
+        return before
+      }
+      await this.#pull()
+    }
+  }
+
+  async readExact(n: number): Promise<Uint8Array> {
+    while (this.#buf.length < n) await this.#pull()
+    const out = this.#buf.subarray(0, n)
+    this.#buf = this.#buf.subarray(n)
+    return out
+  }
+
+  async readChunkedBody(): Promise<Uint8Array> {
+    const parts: Uint8Array[] = []
+    while (true) {
+      const sizeLine = decoder.decode(await this.readUntil(CRLF))
+      const size = parseInt(sizeLine, 16)
+      if (Number.isNaN(size)) throw new Error("Invalid chunk size")
+      if (size === 0) {
+        // consume trailing CRLF after last chunk (ignore trailers)
+        await this.readExact(2)
+        break
+      }
+      parts.push(await this.readExact(size))
+      await this.readExact(2) // chunk CRLF
+    }
+    return concat(parts)
+  }
 }
 
 /**
  * HTTP/1.1 GET over an existing duplex (Tor stream, TLS outer as bytes, …).
  * Replaces `@hazae41/fleche` fetch for this fork (no WASM).
+ *
+ * Frames the response by Content-Length / chunked; does not wait for EOF.
  */
 export async function streamFetch(
   input: string | URL,
@@ -121,6 +149,7 @@ export async function streamFetch(
         : new DOMException("Aborted", "AbortError")
     }
     await writer.write(encoder.encode(head))
+    // Half-close write side (request done). Response is framed by length/chunked.
     await writer.close()
   } catch (e) {
     try {
@@ -131,41 +160,44 @@ export async function streamFetch(
     throw e
   }
 
-  const raw = await readAll(stream.readable, signal)
-  const split = indexOf(raw, CRLFCRLF)
-  if (split === -1) throw new Error("Invalid HTTP response: missing header terminator")
+  const reader = new ByteReader(stream.readable, signal)
+  try {
+    const headBytes = await reader.readUntil(CRLFCRLF)
+    const headText = decoder.decode(headBytes)
+    const lines = headText.split("\r\n")
+    const statusParts = (lines[0] ?? "").split(" ")
+    const status = Number(statusParts[1])
+    const statusText = statusParts.slice(2).join(" ") || ""
+    if (!Number.isInteger(status) || status < 200 || status > 599)
+      throw new Error(`Invalid HTTP status: ${lines[0] ?? ""}`)
 
-  const headText = decoder.decode(raw.subarray(0, split))
-  let bodyBytes = raw.subarray(split + 4)
-
-  const lines = headText.split("\r\n")
-  const statusParts = (lines[0] ?? "").split(" ")
-  const status = Number(statusParts[1])
-  const statusText = statusParts.slice(2).join(" ") || ""
-  if (!Number.isInteger(status) || status < 200 || status > 599)
-    throw new Error(`Invalid HTTP status: ${lines[0] ?? ""}`)
-
-  const responseHeaders = new Headers()
-  for (const line of lines.slice(1)) {
-    if (!line) continue
-    const colon = line.indexOf(":")
-    if (colon === -1) continue
-    responseHeaders.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
-  }
-
-  const transfer = responseHeaders.get("Transfer-Encoding")
-  if (transfer != null && transfer.toLowerCase().includes("chunked")) {
-    bodyBytes = parseChunked(bodyBytes)
-  } else {
-    const lengthHeader = responseHeaders.get("Content-Length")
-    if (lengthHeader != null) {
-      const length = Number(lengthHeader)
-      if (!Number.isNaN(length)) bodyBytes = bodyBytes.subarray(0, length)
+    const responseHeaders = new Headers()
+    for (const line of lines.slice(1)) {
+      if (!line) continue
+      const colon = line.indexOf(":")
+      if (colon === -1) continue
+      responseHeaders.append(line.slice(0, colon).trim(), line.slice(colon + 1).trim())
     }
+
+    let bodyBytes: Uint8Array
+    const transfer = responseHeaders.get("Transfer-Encoding")
+    if (transfer != null && transfer.toLowerCase().includes("chunked")) {
+      bodyBytes = await reader.readChunkedBody()
+    } else {
+      const lengthHeader = responseHeaders.get("Content-Length")
+      if (lengthHeader == null)
+        throw new Error("HTTP response missing Content-Length and chunked encoding")
+      const length = Number(lengthHeader)
+      if (!Number.isInteger(length) || length < 0)
+        throw new Error(`Invalid Content-Length: ${lengthHeader}`)
+      bodyBytes = await reader.readExact(length)
+    }
+
+    // Tor `.z` bodies are often raw zlib with no Content-Encoding.
+    bodyBytes = maybeInflateZlib(bodyBytes)
+
+    return new Response(bodyBytes, { status, statusText, headers: responseHeaders })
+  } finally {
+    reader.release()
   }
-
-  // Tor `.z` bodies are often raw zlib with no Content-Encoding.
-  bodyBytes = maybeInflateZlib(bodyBytes)
-
-  return new Response(bodyBytes, { status, statusText, headers: responseHeaders })
 }

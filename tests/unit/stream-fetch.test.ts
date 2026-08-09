@@ -9,38 +9,39 @@ function utf8(s: string): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-/** Server duplex: capture request bytes; emit response in multiple readable chunks. */
-function mockDuplex(responseChunks: Uint8Array[]): {
+/** Server duplex: capture request; emit response chunks (optionally keep readable open). */
+function mockDuplex(
+  responseChunks: Uint8Array[],
+  opts?: { keepOpen?: boolean },
+): {
   stream: ReadableWritablePair<Uint8Array, Uint8Array>;
   requestText: () => Promise<string>;
 } {
   const reqChunks: Uint8Array[] = [];
   let release!: () => void;
-  const closed = new Promise<void>((resolve) => {
+  const written = new Promise<void>((resolve) => {
     release = resolve;
   });
 
   const writable = new WritableStream<Uint8Array>({
     write(chunk) {
       reqChunks.push(chunk);
-    },
-    close() {
       release();
     },
   });
 
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
-      await closed;
+      await written;
       for (const chunk of responseChunks) controller.enqueue(chunk);
-      controller.close();
+      if (!opts?.keepOpen) controller.close();
     },
   });
 
   return {
     stream: { readable, writable },
     async requestText() {
-      await closed;
+      await written;
       return new TextDecoder().decode(
         reqChunks.reduce((a, c) => {
           const n = new Uint8Array(a.length + c.length);
@@ -59,7 +60,6 @@ describe("streamFetch", () => {
     const full = utf8(
       `HTTP/1.1 200 OK\r\nContent-Length: ${body.length}\r\n\r\n${body}`,
     );
-    // Split inside headers and inside body — not one buffer.
     const { stream, requestText } = mockDuplex([
       full.subarray(0, 12),
       full.subarray(12, 40),
@@ -74,6 +74,17 @@ describe("streamFetch", () => {
     expect(req.startsWith("get /api/ip http/1.1\r\n")).toBe(true);
     expect(req).toContain("host: check.torproject.org\r\n");
     expect(req).toContain("connection: close\r\n");
+  });
+
+  test("finishes Content-Length without waiting for stream close", async () => {
+    const body = "ok";
+    const { stream } = mockDuplex(
+      [utf8(`HTTP/1.1 200 OK\r\nContent-Length: ${body.length}\r\n\r\n${body}`)],
+      { keepOpen: true },
+    );
+
+    const res = await streamFetch("http://localhost/", { stream });
+    expect(await res.text()).toBe("ok");
   });
 
   test("reassembles chunked body", async () => {
@@ -97,7 +108,7 @@ describe("streamFetch", () => {
     expect(await res.text()).toBe(plain);
   });
 
-  test("honors Content-Length truncation", async () => {
+  test("honors Content-Length (ignores bytes past length)", async () => {
     const { stream } = mockDuplex([
       utf8("HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\nabcdEXTRA"),
     ]);
@@ -108,7 +119,7 @@ describe("streamFetch", () => {
   test("rejects response with no header terminator", async () => {
     const { stream } = mockDuplex([utf8("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n")]);
     await expect(streamFetch("http://localhost/", { stream })).rejects.toThrow(
-      /header terminator/,
+      /Unexpected end|header/,
     );
   });
 
@@ -116,7 +127,6 @@ describe("streamFetch", () => {
     const stream = {
       writable: new WritableStream<Uint8Array>(),
       readable: new ReadableStream<Uint8Array>({
-        // never enqueues — abort must win
         start() {},
       }),
     };
