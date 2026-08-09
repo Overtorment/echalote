@@ -2,6 +2,7 @@
  * Live integration: createExitDialer → HTTPS check.torproject.org/api/ip
  * Requires outbound network (CDN77 meek, directory authorities, exit traffic).
  */
+import assert from "node:assert/strict";
 import { describe, test } from "@jest/globals";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import {
@@ -12,6 +13,19 @@ import {
 } from "../../src/mods/index.ts";
 
 const OVERALL_MS = 120_000;
+
+// Trace unexpected assert.ok(false) failures seen on GHA npm Jest.
+const _ok = assert.ok.bind(assert);
+assert.ok = ((value: unknown, message?: string | Error) => {
+  if (!value) {
+    console.error(
+      "[exit-http] assert.ok(false)",
+      message ?? "",
+      new Error("assert.ok stack").stack,
+    );
+  }
+  return _ok(value as any, message as any);
+}) as typeof assert.ok;
 
 async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: string }> {
   const dialer = createExitDialer();
@@ -48,62 +62,44 @@ async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: st
   }
 }
 
-async function clearnetCheck(signal: AbortSignal): Promise<{ IsTor?: boolean; IP?: string }> {
-  const res = await fetch("https://check.torproject.org/api/ip", {
-    signal: AbortSignal.any([signal, AbortSignal.timeout(10_000)]),
-  });
-  if (!res.ok) throw new Error(`clearnet HTTP ${res.status}`);
-  return (await res.json()) as { IsTor?: boolean; IP?: string };
-}
-
 describe("integration: Tor exit HTTP", () => {
   test(
     "meek circuit reaches check.torproject.org with IsTor=true",
     async () => {
-      const overall = AbortSignal.timeout(OVERALL_MS);
+      const deadline = Date.now() + OVERALL_MS;
       let lastError: unknown;
       let attempt = 0;
-      const seenIps = new Set<string>();
+      const seenIps: string[] = [];
 
-      while (!overall.aborted) {
+      while (Date.now() < deadline) {
         attempt++;
+        const attemptSignal = AbortSignal.timeout(
+          Math.min(45_000, Math.max(5_000, deadline - Date.now())),
+        );
         try {
-          const { IsTor, IP } = await checkTorIp(overall);
-          seenIps.add(IP);
-          if (!IsTor) {
-            throw new Error(`IsTor=false IP=${IP} (attempt ${attempt})`);
-          }
+          console.error(`[exit-http] attempt ${attempt} start`);
+          const { IsTor, IP } = await checkTorIp(attemptSignal);
+          seenIps.push(IP);
+          console.error(`[exit-http] attempt ${attempt} IP=${IP} IsTor=${IsTor}`);
+          // Use assert.ok with message so GHA logs show the exit IP.
+          assert.ok(IsTor, `IsTor=false IP=${IP} attempt=${attempt} seen=${seenIps.join(",")}`);
           return;
         } catch (err) {
           lastError = err;
           const msg = err instanceof Error ? err.message : String(err);
-          console.warn(`[exit-http] attempt ${attempt} failed: ${msg}`);
-          if (overall.aborted) break;
-          // Brief pause so the next circuit can pick a different exit.
-          await new Promise((r) => setTimeout(r, 500));
+          console.error(`[exit-http] attempt ${attempt} failed: ${msg}`);
+          if (Date.now() >= deadline) break;
+          await new Promise((r) => setTimeout(r, 750));
         }
       }
 
-      let clearnet = "";
-      try {
-        const c = await clearnetCheck(AbortSignal.timeout(10_000));
-        clearnet = ` clearnetIP=${c.IP} clearnetIsTor=${c.IsTor}`;
-        for (const ip of seenIps) {
-          if (ip === c.IP) {
-            clearnet += " LEAK:torIP==clearnetIP";
-            break;
-          }
-        }
-      } catch (e) {
-        clearnet = ` clearnetCheckFailed=${e instanceof Error ? e.message : String(e)}`;
-      }
-
-      const detail = lastError instanceof Error ? lastError.message : String(lastError);
       throw new Error(
-        `integration failed after ${attempt} attempt(s): ${detail}; exitIPs=${[...seenIps].join(",") || "(none)"};${clearnet}`,
+        `integration failed after ${attempt} attempt(s); exitIPs=${seenIps.join(",") || "(none)"}; last=${
+          lastError instanceof Error ? lastError.message : String(lastError)
+        }`,
         { cause: lastError },
       );
     },
-    OVERALL_MS + 30_000,
+    OVERALL_MS + 60_000,
   );
 });
