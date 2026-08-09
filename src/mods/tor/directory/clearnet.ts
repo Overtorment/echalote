@@ -82,10 +82,88 @@ function shuffleInPlace<T>(items: T[]): T[] {
   return items
 }
 
+/**
+ * Run workers over `items` with a concurrency cap. First success wins;
+ * abort remaining in-flight work. Throws the last error if all fail.
+ */
+export async function fetchFirstOk<T, R>(
+  items: readonly T[],
+  worker: (item: T, signal: AbortSignal) => Promise<R>,
+  options: { concurrency?: number; signal?: AbortSignal } = {},
+): Promise<R> {
+  const concurrency = Math.max(1, options.concurrency ?? 4)
+  const parent = options.signal ?? new AbortController().signal
+  if (items.length === 0) throw new Error("fetchFirstOk: empty items")
+  if (parent.aborted) throw parent.reason ?? new Error("aborted")
+
+  let cursor = 0
+  let inFlight = 0
+  let settled = false
+  const errors: unknown[] = []
+  const localControllers: AbortController[] = []
+
+  return await new Promise<R>((resolve, reject) => {
+    const failIfDone = () => {
+      if (settled) return
+      if (cursor >= items.length && inFlight === 0) {
+        settled = true
+        reject(
+          errors.find((e) => e instanceof Error) ??
+            new Error("fetchFirstOk: all failed", { cause: errors[0] }),
+        )
+      }
+    }
+
+    const launch = () => {
+      while (!settled && inFlight < concurrency && cursor < items.length) {
+        if (parent.aborted) {
+          settled = true
+          reject(parent.reason ?? new Error("aborted"))
+          return
+        }
+        const item = items[cursor]!
+        cursor += 1
+        inFlight += 1
+        const local = new AbortController()
+        localControllers.push(local)
+        const linked = AbortSignal.any([parent, local.signal])
+        void worker(item, linked).then(
+          (value) => {
+            inFlight -= 1
+            if (settled) return
+            settled = true
+            for (const c of localControllers) {
+              try {
+                c.abort(new Error("fetchFirstOk: lost race"))
+              } catch {
+                // ignore
+              }
+            }
+            resolve(value)
+          },
+          (err) => {
+            inFlight -= 1
+            errors.push(err)
+            if (!settled) {
+              if (cursor < items.length) launch()
+              else failIfDone()
+            }
+          },
+        )
+      }
+      failIfDone()
+    }
+
+    launch()
+  })
+}
+
 export type FetchMicrodescConsensusOptions = {
   mirrors?: readonly string[]
   /** Skip the in-process cache. Default false. */
   force?: boolean
+  /** Parallel mirror GETs. Default 3. */
+  concurrency?: number
 }
 
 /**
@@ -100,42 +178,39 @@ export async function fetchMicrodescConsensus(
   }
 
   const mirrors = shuffleInPlace([...(options.mirrors ?? CONSENSUS_MIRRORS)])
-  let lastError: unknown
-
-  for (const url of mirrors) {
-    try {
+  const consensus = await fetchFirstOk(
+    mirrors,
+    async (url, raceSignal) => {
       const res = await fetch(url, {
-        signal: withFetchTimeout(signal, CONSENSUS_FETCH_MS),
+        signal: withFetchTimeout(raceSignal, CONSENSUS_FETCH_MS),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const text = await res.text()
       if (!text.includes("directory-footer")) {
         throw new Error("truncated consensus (no directory-footer)")
       }
-      const consensus = Consensus.parseOrThrow(text)
-      if (consensus.microdescs.length === 0) {
+      const parsed = Consensus.parseOrThrow(text)
+      if (parsed.microdescs.length === 0) {
         throw new Error("consensus has no microdescs")
       }
-      cached = { at: Date.now(), consensus }
-      return consensus
-    } catch (err) {
-      if (signal.aborted) throw err
-      lastError = err
-    }
-  }
+      return parsed
+    },
+    { concurrency: options.concurrency ?? 3, signal },
+  )
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("consensus fetch failed")
+  cached = { at: Date.now(), consensus }
+  return consensus
 }
 
 export type FetchMicrodescOptions = {
   authorityHosts?: readonly string[]
+  /** Parallel microdesc GETs. Default 4. */
+  concurrency?: number
 }
 
 /**
  * Fetch + verify a microdescriptor body over clearnet.
- * Prefers the relay dirport, then directory authorities.
+ * Prefers directory authorities, then the relay dirport.
  */
 export async function fetchMicrodesc(
   head: Consensus.Microdesc.Head,
@@ -156,28 +231,28 @@ export async function fetchMicrodesc(
     urls.push(`http://${head.hostname}:${head.dirport}/tor/micro/d/${dig}`)
   }
 
-  let lastError: unknown = new Error("no microdesc URL succeeded")
-  for (const url of urls) {
-    if (signal.aborted) break
-    try {
-      const raw = await fetchBytes(url, signal)
-      if (!raw) continue
-      const body = maybeInflate(raw)
-      const got = sha256Base64Unpadded(body)
-      if (got !== dig) {
-        lastError = new Error(`digest mismatch for ${url}`)
-        continue
-      }
-      const text = body.toString("utf8")
-      const [parsed] = Consensus.Microdesc.parseOrThrow(text)
-      if (!parsed) throw new Error("empty microdescriptor")
-      return { ...head, ...parsed }
-    } catch (err) {
-      lastError = err
+  try {
+    return await fetchFirstOk(
+      urls,
+      async (url, raceSignal) => {
+        const raw = await fetchBytes(url, raceSignal)
+        if (!raw) throw new Error(`empty body from ${url}`)
+        const body = maybeInflate(raw)
+        const got = sha256Base64Unpadded(body)
+        if (got !== dig) throw new Error(`digest mismatch for ${url}`)
+        const text = body.toString("utf8")
+        const [parsed] = Consensus.Microdesc.parseOrThrow(text)
+        if (!parsed) throw new Error("empty microdescriptor")
+        return { ...head, ...parsed }
+      },
+      { concurrency: options.concurrency ?? 4, signal },
+    )
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("fetchFirstOk")) {
+      throw new Error("no microdesc URL succeeded", { cause: err })
     }
+    throw err instanceof Error
+      ? err
+      : new Error(`microdesc fetch failed for ${head.nickname}`)
   }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error(`microdesc fetch failed for ${head.nickname}`)
 }

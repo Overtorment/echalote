@@ -89,10 +89,14 @@ Lower-level pieces (`createMeekStream`, `TorClientDuplex`, `buildExitCircuit`, `
 type BuildExitCircuitOptions = {
   consensusUrls?: readonly string[] // DA consensus URLs
   extendTimeoutMs?: number          // default 15_000
-  attempts?: number                 // rebuilds on destroyed circuit; default 3
+  attempts?: number                 // race rounds after transient fail; default 3
+  circuitRace?: number              // parallel builds per round; default 2
   pickTries?: number                // microdesc fetch candidates; default 8
 }
 ```
+
+`createExitDialer` also accepts `circuitAttempts` / `circuitRace` and recycles
+meek once after the circuit budget fails on a transient error.
 
 ### Why clearnet directory?
 

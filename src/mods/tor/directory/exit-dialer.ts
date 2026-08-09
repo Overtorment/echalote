@@ -6,7 +6,10 @@ import { createMeekStream, DEFAULT_MEEK_URL } from "../../meek/meek.ts"
 import { Circuit } from "../circuit.ts"
 import { TorClientDuplex } from "../client.ts"
 import { TorStreamDuplex } from "../stream.ts"
-import { buildExitCircuit } from "./build-exit-circuit.ts"
+import {
+  buildExitCircuit,
+  isTransientCircuitError,
+} from "./build-exit-circuit.ts"
 
 export type ExitDialer = {
   /** RELAY_BEGIN to host:port via a Tor exit. `stream.outer` is Uint8Array. */
@@ -23,8 +26,13 @@ export type ExitDialerOptions = {
   extendTimeoutMs?: number
   /** Timeout for RELAY_BEGIN / stream open. Default 20s. */
   openTimeoutMs?: number
-  /** How many times to rebuild a circuit after DestroyedError. Default 3. */
+  /**
+   * Race rounds for exit-circuit build after transient failures.
+   * Default 3 (see `buildExitCircuit` `attempts`).
+   */
   circuitAttempts?: number
+  /** Parallel circuit builds per round. Default 2. */
+  circuitRace?: number
 }
 
 function errorDetail(err: unknown): string {
@@ -44,16 +52,6 @@ function wrapDialError(stage: string, err: unknown): Error {
   const out = new Error(`tor ${stage}: ${errorDetail(err)}`)
   out.cause = err
   return out
-}
-
-function isDestroyedCircuitError(err: unknown): boolean {
-  const msg = errorDetail(err)
-  return (
-    msg.includes("Circuit destroyed") ||
-    msg.includes("DestroyedError") ||
-    msg.includes("Relay ended") ||
-    msg.includes("RelayEndedError")
-  )
 }
 
 /** Close the exit circuit when the stream is closed. */
@@ -80,6 +78,7 @@ export function createExitDialer(
   const extendTimeoutMs = options.extendTimeoutMs ?? 15_000
   const openTimeoutMs = options.openTimeoutMs ?? 20_000
   const circuitAttempts = options.circuitAttempts ?? 3
+  const circuitRace = options.circuitRace ?? 2
 
   let tor: TorClientDuplex | null = null
   let ready: Promise<void> | null = null
@@ -143,6 +142,7 @@ export function createExitDialer(
       return await buildExitCircuit(client, signal, {
         extendTimeoutMs,
         attempts: circuitAttempts,
+        circuitRace,
       })
     } catch (err) {
       throw err instanceof Error && err.message.startsWith("tor ")
@@ -158,7 +158,8 @@ export function createExitDialer(
       try {
         circuit = await makeExitCircuit(client, signal)
       } catch (err) {
-        if (isDestroyedCircuitError(err) && !signal.aborted) {
+        // One meek/bootstrap recycle after the circuit budget fails.
+        if (isTransientCircuitError(err) && !signal.aborted) {
           resetTor()
           client = await ensureTor(signal)
           circuit = await makeExitCircuit(client, signal)
