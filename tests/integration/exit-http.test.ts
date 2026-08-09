@@ -59,6 +59,8 @@ describe("integration: Tor exit HTTP", () => {
         if (overall.aborted) break;
         try {
           const { IsTor, IP } = await checkTorIp(overall);
+          if (!IP) throw new Error("empty IP");
+          if (!IsTor) throw new Error(`IsTor=false IP=${IP} (attempt ${i}/${ATTEMPTS})`);
           expect(IsTor).toBe(true);
           expect(IP.length).toBeGreaterThan(0);
           return;
@@ -69,7 +71,7 @@ describe("integration: Tor exit HTTP", () => {
       }
       throw lastError instanceof Error
         ? lastError
-        : new Error("integration failed", { cause: lastError });
+        : new Error(`integration failed: ${String(lastError)}`, { cause: lastError });
     },
     OVERALL_MS + 30_000,
   );
