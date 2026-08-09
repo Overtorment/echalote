@@ -14,19 +14,6 @@ import {
 
 const OVERALL_MS = 120_000;
 
-// Trace unexpected assert.ok(false) failures seen on GHA npm Jest.
-const _ok = assert.ok.bind(assert);
-assert.ok = ((value: unknown, message?: string | Error) => {
-  if (!value) {
-    console.error(
-      "[exit-http] assert.ok(false)",
-      message ?? "",
-      new Error("assert.ok stack").stack,
-    );
-  }
-  return _ok(value as any, message as any);
-}) as typeof assert.ok;
-
 async function checkTorIp(signal: AbortSignal): Promise<{ IsTor: boolean; IP: string }> {
   const dialer = createExitDialer();
   try {
@@ -77,17 +64,15 @@ describe("integration: Tor exit HTTP", () => {
           Math.min(45_000, Math.max(5_000, deadline - Date.now())),
         );
         try {
-          console.error(`[exit-http] attempt ${attempt} start`);
           const { IsTor, IP } = await checkTorIp(attemptSignal);
           seenIps.push(IP);
-          console.error(`[exit-http] attempt ${attempt} IP=${IP} IsTor=${IsTor}`);
-          // Use assert.ok with message so GHA logs show the exit IP.
-          assert.ok(IsTor, `IsTor=false IP=${IP} attempt=${attempt} seen=${seenIps.join(",")}`);
+          assert.ok(
+            IsTor,
+            `IsTor=false IP=${IP} attempt=${attempt} seen=${seenIps.join(",")}`,
+          );
           return;
         } catch (err) {
           lastError = err;
-          const msg = err instanceof Error ? err.message : String(err);
-          console.error(`[exit-http] attempt ${attempt} failed: ${msg}`);
           if (Date.now() >= deadline) break;
           await new Promise((r) => setTimeout(r, 750));
         }
