@@ -43,6 +43,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 | `src/mods/tor/directory/` | Clearnet consensus/microdesc + `buildExitCircuit` + `createExitDialer` |
 | `src/mods/crypto/` | Noble/WebCrypto adapters |
 | `src/libs/aes/`, `src/libs/rsa/` | Drop-in replacements for hazae41 WASM |
+| `src/libs/http/` | `streamFetch` — HTTP/1.1 over a Uint8Array duplex (no Fleche/WASM) |
 | `tests/unit/` | Unit + frozen wasm vectors under `tests/unit/vectors/` |
 | `tests/integration/` | Live meek → exit → HTTPS check |
 | `tests/package/` | Pack + consumer smoke (bip157-style) |
@@ -65,7 +66,7 @@ Keep `package-lock.json` and `bun.lock` in sync when changing deps.
 - Prefer characterization tests before swaps; keep wasm vector fixtures.
 - After circuit/directory changes, run `bun run test:integration` (or CI).
 - Prefer `createExitDialer` for consumers; keep `buildExitCircuit` for custom pipelines.
-- `TorStreamDuplex.outer` is raw `Uint8Array`. Opaque stays internal; use `asOpaqueDuplex` only for hazae41 Cadenas/Fleche piping.
+- `TorStreamDuplex.outer` is raw `Uint8Array`. Use `streamFetch` for HTTP over that duplex. Use `asOpaqueDuplex` / `asBytesDuplex` only for Cadenas TLS piping.
 - After entrypoint changes, run `bun run test:package` and verify a Bun consumer can `import` from `@hazae41/echalote`.
 
 ## Style

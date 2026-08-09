@@ -4,7 +4,7 @@
   "version": "0.5.0",
   "author": "Overtorment",
   "license": "MIT",
-  "description": "Zero-copy Tor protocol for Bun and TypeScript (Overtorment fork: CDN77 meek, pinned deps, Noble crypto, no aes/rsa WASM)",
+  "description": "Zero-copy Tor protocol for Bun and TypeScript (Overtorment fork: CDN77 meek, pinned deps, Noble crypto, no WASM)",
   "homepage": "https://github.com/Overtorment/echalote",
   "repository": "github:Overtorment/echalote",
   "engines": {
@@ -39,7 +39,6 @@
     "@hazae41/cascade": "2.2.2",
     "@hazae41/cursor": "1.2.4",
     "@hazae41/ed25519": "2.1.21",
-    "@hazae41/fleche": "1.4.5",
     "@hazae41/future": "1.0.3",
     "@hazae41/mutex": "2.1.0",
     "@hazae41/option": "1.1.4",

@@ -12,10 +12,10 @@ import { RelayEndReason, RelayEndReasonOther } from "./binary/cells/relayed/rela
 import { RelaySendmeStreamCell } from "./binary/cells/relayed/relay_sendme/cell.ts";
 
 /**
- * Adapt the internal Opaque/Writable duplex to raw bytes for public consumers.
- * Owns `opaque`'s streams — do not also pipe `secret.outer` elsewhere.
+ * Adapt an Opaque/Writable duplex (e.g. Cadenas TLS `outer`) to raw bytes.
+ * Owns `opaque`'s streams — do not also pipe the Opaque side elsewhere.
  */
-function bytesOuterFromOpaque(
+export function asBytesDuplex(
   opaque: ReadableWritablePair<Opaque, Writable>,
 ): ReadableWritablePair<Uint8Array, Uint8Array> {
   const readable = opaque.readable.pipeThrough(
@@ -37,7 +37,7 @@ function bytesOuterFromOpaque(
 }
 
 /**
- * Wrap a Uint8Array duplex as hazae41 Opaque/Writable (Cadenas TLS, Fleche, …).
+ * Wrap a Uint8Array duplex as hazae41 Opaque/Writable (Cadenas TLS, …).
  */
 export function asOpaqueDuplex(
   bytes: ReadableWritablePair<Uint8Array, Uint8Array>,
@@ -67,7 +67,7 @@ export class TorStreamDuplex {
 
   constructor(secret: SecretTorStreamDuplex) {
     this.#secret = secret
-    this.#outer = bytesOuterFromOpaque(secret.outer)
+    this.#outer = asBytesDuplex(secret.outer)
   }
 
   [Symbol.dispose]() {
