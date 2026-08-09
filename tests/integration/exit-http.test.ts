@@ -1,8 +1,11 @@
 /**
  * Live integration: createExitDialer → HTTPS check.torproject.org/api/ip
  * Requires outbound network (CDN77 meek, directory authorities, exit traffic).
+ *
+ * Do not use `node:assert` / `assert.ok` for retryable checks under Jest:
+ * Jest treats AssertionError as a test failure even when caught in try/catch,
+ * which aborts the wall-clock retry loop after the first IsTor=false exit.
  */
-import assert from "node:assert/strict";
 import { describe, test } from "@jest/globals";
 import { Ciphers, TlsClientDuplex } from "@hazae41/cadenas";
 import {
@@ -66,10 +69,11 @@ describe("integration: Tor exit HTTP", () => {
         try {
           const { IsTor, IP } = await checkTorIp(attemptSignal);
           seenIps.push(IP);
-          assert.ok(
-            IsTor,
-            `IsTor=false IP=${IP} attempt=${attempt} seen=${seenIps.join(",")}`,
-          );
+          if (!IsTor) {
+            throw new Error(
+              `IsTor=false IP=${IP} attempt=${attempt} seen=${seenIps.join(",")}`,
+            );
+          }
           return;
         } catch (err) {
           lastError = err;
