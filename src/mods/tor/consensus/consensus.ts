@@ -383,8 +383,6 @@ export namespace Consensus {
           throw new Error("Missing microdesc")
         if (item.flags == null)
           throw new Error("Missing flags")
-        if (item.version == null)
-          throw new Error("Missing version")
         if (item.entries == null)
           throw new Error("Missing entries")
         if (item.bandwidth == null)
@@ -653,7 +651,7 @@ export namespace Consensus {
       readonly ipv6?: string
       readonly microdesc: string
       readonly flags: string[]
-      readonly version: string
+      readonly version?: string
       readonly entries: Record<string, string>
       readonly bandwidth: Record<string, string>
     }

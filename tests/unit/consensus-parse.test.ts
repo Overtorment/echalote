@@ -73,4 +73,24 @@ describe("Consensus.parseOrThrow (microdesc consensus heads)", () => {
     expect(exit.flags).toContain("Exit");
     expect(exit.flags).not.toContain("BadExit");
   });
+
+  test("keeps a router whose v line is omitted (dir-spec: at most once)", () => {
+    const text = `${microdescHeads.replace(
+      "directory-footer\n",
+      `r gotorDe5 AjWaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 2038-01-01 00:00:00 65.109.87.89 9001 0
+m ccccccccccccccccccccccccccccccccccccccccccc
+s Fast Running Stable V2Dir Valid
+pr Cons=1-2 Desc=1-2 DirCache=2 FlowCtrl=1-2 Link=1-5 LinkAuth=1,3 Microdesc=1-2 Relay=1-4
+w Bandwidth=100
+directory-footer
+`,
+    )}`;
+    const c = Consensus.parseOrThrow(text);
+    expect(c.microdescs.map((r) => r.nickname)).toEqual([
+      "c0der",
+      "rome2",
+      "gotorDe5",
+    ]);
+    expect(c.microdescs[2]!.version).toBeUndefined();
+  });
 });
